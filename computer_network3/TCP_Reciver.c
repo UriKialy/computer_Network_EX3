@@ -28,6 +28,8 @@ int main(int argc, char *argv[])
     memset(&server, 0, sizeof(server));
     memset(&client, 0, sizeof(client));
     sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    printf("Starting Receiver.\n");
     if (sock == -1)
     {
         perror("socket(2)");
@@ -49,13 +51,14 @@ int main(int argc, char *argv[])
         close(sock);
         return 1;
     }
+    printf("bind successfully\n");
     if (listen(sock, MAX_CLIENTS) < 0)
     {
         perror("listen(2)");
         close(sock);
         return 1;
     }
-    printf("bind successfully");
+    
     if (strcmp(argv[4], "reno") == 0)
     {
         // set to be reno
@@ -71,24 +74,26 @@ int main(int argc, char *argv[])
         printf("Invalid TCP congestion control algorithm\n");
         return -1;
     }
-    printf("the chosen algo was:%s",argv[4]);
+
+    printf("Waiting for TCP connection...\n");
+    printf("the chosen algo was: %s\n", argv[4]);
+
+    int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
+    if (client_sock < 0)
+    {
+        perror("accept(2)");
+        close(sock);
+        return 1;
+    }
+    printf("connected\n");
     while (1)
     {
-
-        int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
-
-        if (client_sock < 0)
-        {
-            perror("accept(2)");
-            close(sock);
-            return 1;
-        }
-        printf("connected");
         // Create a buffer to store the received message.
         char buffer[BUFFER_SIZE] = {0};
         start_t = clock();
         // Receive a message from the client and store it in the buffer.
         int bytes_received = recv(client_sock, buffer, BUFFER_SIZE, 0);
+        printf("recieved file\n");
         end_t = clock();
         // If the message receiving failed, print an error message and return 1.
         if (bytes_received < 0)
@@ -100,7 +105,7 @@ int main(int argc, char *argv[])
         }
 
         total_t = (double)(end_t - start_t) * DEV;
-        List_insertLast(dataList, total_t, bytes_received / total_t);
+        List_insertLast(dataList, total_t, (double)bytes_received / total_t);
 
         if (!strcmp(buffer, "exit"))
         {
