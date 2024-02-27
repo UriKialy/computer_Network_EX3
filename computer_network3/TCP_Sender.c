@@ -3,66 +3,114 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 5060
+#include <time.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
+// #define SERVER_IP "127.0.0.1"
+// #define SERVER_PORT 5060
 #define BUFFER_SIZE 1024
-/*
- * @brief A random data generator function based on srand() and rand().
- * @param size The size of the data to generate (up to 2^32 bytes).
- * @return A pointer to the buffer.
- */
+
+// make random data
 char *util_generate_random_data(unsigned int size)
 {
     char *buffer = NULL;
     // Argument check.
     if (size == 0)
+    {
         return NULL;
+    }
     buffer = (char *)calloc(size, sizeof(char));
     // Error checking.
     if (buffer == NULL)
+    {
         return NULL;
-    // Randomize the seed of the random number generator.
+    }
     srand(time(NULL));
     for (unsigned int i = 0; i < size; i++)
+    {
         *(buffer + i) = ((unsigned int)rand() % 256);
+    }
     return buffer;
 }
-int main()
+
+int main(int argc, char *argv[])
 {
-    int sock = -1;
+    char *ans = "yes";
     struct sockaddr_in server;
     char buffer[BUFFER_SIZE] = {0};
     memset(&server, 0, sizeof(server));
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1)
-    {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    char *message = util_generate_random_data(BUFFER_SIZE + BUFFER_SIZE);
+    if (sock <0)
+    {   
         perror("socket(2)");
         return 1;
     }
-    if (inet_pton(AF_INET, SERVER_IP, &server.sin_addr) <= 0)
+    printf("socket was good \n");
+    if (strcmp(argv[6], "reno") == 0)
+    {
+        // set to be reno
+        setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "reno", strlen("reno"));
+    }
+    else if (strcmp(argv[6], "cubic") == 0)
+    {
+        // set to be cubic
+        setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "cubic", strlen("cubic"));
+    }
+    else
+    {
+        printf("Invalid TCP congestion control algorithm\n");
+        return -1;
+    }
+
+    if (inet_pton(AF_INET, argv[2], &server.sin_addr) <= 0)
     {
         perror("inet_pton(3)");
         close(sock);
         return 1;
     }
+
     server.sin_family = AF_INET;
-    server.sin_port = htons(SERVER_PORT);
-    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
+    server.sin_port = htons(atoi(argv[4]));
+
+    int con = connect(sock, (struct sockaddr *)&server, sizeof(server)) ;
+    printf("the con is %d\n",con);
+    if (con < 0)
     {
+        printf("badd\n");
         perror("connect(2)");
         close(sock);
         return 1;
     }
-    char *message = til_generate_random_data(2048);
-    int bytes_sent = send(sock, message, strlen(message) + 1, 0);
-    char *ans = printf("resend?");
-    if (ans == "yes")
+
+    while (!strcmp(ans, "yes"))
     {
         int bytes_sent = send(sock, message, strlen(message) + 1, 0);
+        if (bytes_sent == -1)
+        {
+            perror("send() failed");
+        }
+        else if (bytes_sent == 0)
+        {
+            printf("peer has closed the TCP connection prior to send().\n");
+        }
+        else if (strlen(message) + 1 > bytes_sent)
+        {
+            printf("sent only %d bytes from the required %d.\n", strlen(message) + 1, bytes_sent);
+        }
+        else
+        {
+            printf("message was successfully sent .\n");
+        }
+
+        printf("resend?");
+
+        scanf("%s", ans);
     }
-    else{
-    char *exit="goodbye";
-        int bytes_sent = send(sock, exit, strlen(exit) + 1, 0);
-    }
+
+    char *exit = "goodbye";
+    int bytes_sent = send(sock, exit, strlen(exit) + 1, 0);
+
     return 0;
 }
