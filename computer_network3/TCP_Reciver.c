@@ -11,11 +11,11 @@
 #define MAX_CLIENTS 1
 #define BUFFER_SIZE 2048
 #define DEV 1000
+#define IP "127.0.0.1"
 
 int main(int argc, char *argv[])
 {
     List *dataList = List_alloc();
-    int sock = -1;
     struct sockaddr_in server;
     struct sockaddr_in client;
     socklen_t client_len = sizeof(client);
@@ -27,7 +27,12 @@ int main(int argc, char *argv[])
     int opt = 1;
     memset(&server, 0, sizeof(server));
     memset(&client, 0, sizeof(client));
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    for (int i = 0; i <  argc; i++)
+    {
+        puts(argv[i]);
+    }
 
     printf("Starting Receiver.\n");
     if (sock == -1)
@@ -42,9 +47,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_addr.s_addr = inet_addr(IP);
     server.sin_family = AF_INET;
-    server.sin_port = htons((int)argv[2]);
+    server.sin_port = htons((atoi(argv[2])));
     if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
     {
         perror("bind(2)");
@@ -58,7 +63,7 @@ int main(int argc, char *argv[])
         close(sock);
         return 1;
     }
-    
+
     if (strcmp(argv[4], "reno") == 0)
     {
         // set to be reno
@@ -78,16 +83,17 @@ int main(int argc, char *argv[])
     printf("Waiting for TCP connection...\n");
     printf("the chosen algo was: %s\n", argv[4]);
 
-    int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
-    if (client_sock < 0)
-    {
-        perror("accept(2)");
-        close(sock);
-        return 1;
-    }
-    printf("connected\n");
     while (1)
     {
+        printf("enter to while");
+        int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
+        if (client_sock < 0)
+        {
+            perror("accept(2)");
+            close(sock);
+            return 1;
+        }
+        printf("connected\n");
         // Create a buffer to store the received message.
         char buffer[BUFFER_SIZE] = {0};
         start_t = clock();

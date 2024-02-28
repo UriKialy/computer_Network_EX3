@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;
     char buffer[BUFFER_SIZE] = {0};
     memset(&server, 0, sizeof(server));
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     char *message = util_generate_random_data(BUFFER_SIZE + BUFFER_SIZE);
     if (sock <0)
     {   
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    while (!strcmp(ans, "yes"))
+    while (1)
     {
         int bytes_sent = send(sock, message, strlen(message) + 1, 0);
         if (bytes_sent == -1)
