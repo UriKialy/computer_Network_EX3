@@ -91,14 +91,15 @@ void List_insertLast(List *list, const double speed, const double bandwith)
 void List_print(const List *list)
 {
 	int i = 1;
-	const Node *p = list->_head;
+	Node* p = list->_head;
 
 	printf("----------------------------------\n");
 	printf("-          * Statistics *        -\n");
 
 	while (p)
 	{
-		printf("- Run #%d Data: Time=%.2fms; Speed=%.2fMB/s", i, p->_speed, p->_bandwith);
+		printf("- Run #%d Data: Time=%.2fms; Speed=%.2fMB/s\n", i, p->_speed, p->_bandwith);
+		i++;
 		p = p->_next;
 	}
 
