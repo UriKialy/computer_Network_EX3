@@ -7,9 +7,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-// #define SERVER_IP "127.0.0.1"
-// #define SERVER_PORT 5060
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 65536
 
 // make random data
 char *util_generate_random_data(unsigned int size)
@@ -36,14 +34,16 @@ char *util_generate_random_data(unsigned int size)
 
 int main(int argc, char *argv[])
 {
-    char *ans = "yes";
+    char ans[4] = "yes";
     struct sockaddr_in server;
     char buffer[BUFFER_SIZE] = {0};
     memset(&server, 0, sizeof(server));
+    int big_size = 2097152;
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    char *message = util_generate_random_data(BUFFER_SIZE + BUFFER_SIZE);
-    if (sock <0)
-    {   
+    char *message = util_generate_random_data(big_size);
+
+    if (sock < 0)
+    {
         perror("socket(2)");
         return 1;
     }
@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(argv[4]));
 
-    int con = connect(sock, (struct sockaddr *)&server, sizeof(server)) ;
-    printf("the con is %d\n",con);
+    int con = connect(sock, (struct sockaddr *)&server, sizeof(server));
+    printf("the con is %d\n", con);
     if (con < 0)
     {
         printf("badd\n");
@@ -84,33 +84,61 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    int bytesSent = 0;
+
     while (1)
     {
-        int bytes_sent = send(sock, message, strlen(message) + 1, 0);
-        if (bytes_sent == -1)
+        bytesSent = 0;
+        // puts("int the sender loop");
+
+        while (bytesSent < big_size)
         {
-            perror("send() failed");
+            int cur_sent = send(sock, message + bytesSent, big_size - bytesSent, 0);
+            bytesSent += cur_sent;
+            if (cur_sent < 0)
+            {
+                perror("send(2)");
+                close(sock);
+                return 1;
+            }
+            else if (cur_sent == 0)
+            {
+                printf("peer has closed the TCP connection prior to send().\n");
+                close(sock);
+                return 1;
+            }
         }
-        else if (bytes_sent == 0)
-        {
-            printf("peer has closed the TCP connection prior to send().\n");
-        }
-        else if (strlen(message) + 1 > bytes_sent)
-        {
-            printf("sent only %d bytes from the required %d.\n", strlen(message) + 1, bytes_sent);
-        }
-        else
-        {
-            printf("message was successfully sent .\n");
-        }
+        printf("message was successfully sent .\n");
+        printf("message size was %d\n", bytesSent);
 
         printf("resend?");
-
         scanf("%s", ans);
+        if (ans[0] != 'y')
+        {
+            break;
+        }
+        // int bytes_sent = send(sock, message, strlen(message) + 1, 0);
+        //  if (bytes_sent == -1)
+        //  {
+        //      perror("send() failed");
+        //  }
+        //  else if (bytes_sent == 0)
+        //  {
+        //      printf("peer has closed the TCP connection prior to send().\n");
+        //  }
+        //  else if (strlen(message) + 1 > bytes_sent)
+        //  {
+        //      printf("sent only %d bytes from the required %d.\n", strlen(message) + 1, bytes_sent);
+        //  }
+        //  else
+        //  {
+        //      printf("message was successfully sent .\n");
+        //  }
     }
-
-    char *exit = "goodbye";
-    int bytes_sent = send(sock, exit, strlen(exit) + 1, 0);
-
+    free(message);
+    char *exit = "exit";
+    bytesSent = send(sock, exit, strlen(exit) + 1, 0);
+    printf("%d\n", bytesSent);
+    close(sock);
     return 0;
 }
