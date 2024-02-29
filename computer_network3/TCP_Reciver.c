@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -19,8 +20,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;
     struct sockaddr_in client;
     socklen_t client_len = sizeof(client);
-    char *message = "";
-    int messageLen = strlen(message) + 1;
     clock_t start_t, end_t;
     double total_t;
 
@@ -51,7 +50,7 @@ int main(int argc, char *argv[])
         close(sock);
         return 1;
     }
-    printf("bind successfully\n");
+
     if (listen(sock, MAX_CLIENTS) < 0)
     {
         perror("listen(2)");
@@ -71,12 +70,11 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printf("Invalid TCP congestion control algorithm\n");
+        printf("Invalid TCP congestion control algorithm.\n");
         return -1;
     }
 
     printf("Waiting for TCP connection...\n");
-    printf("the chosen algo was: %s\n", argv[4]);
     int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
     int filesize = 2097152;
     int bytes_received = 0;
@@ -85,29 +83,23 @@ int main(int argc, char *argv[])
     {
         bytes_received = 0;
 
-        printf("enter to while\n");
         if (client_sock < 0)
         {
             perror("accept(2)");
             close(sock);
             return 1;
         }
-        printf("connected\n");
+        printf("Sender connected, beginning to receive file...\n");
         // Create a buffer to store the received message.
         char buffer[BUFFER_SIZE] = {0};
         start_t = clock();
 
-        bytes_received < filesize ? puts("True" ) : puts("NotTrue" );
-
         // Receive a message from the client and store it in the buffer.
         while (bytes_received < filesize)
         {
-            puts("here");
             int currBytes = recv(client_sock, buffer + bytes_received, BUFFER_SIZE - bytes_received, 0);
 
             bytes_received += currBytes;
-
-            printf("now: %d - all time:%d\n", currBytes, bytes_received);
 
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)
@@ -128,21 +120,22 @@ int main(int argc, char *argv[])
 
         }
 
-        printf("size: %d", bytes_received);
-
         if (buffer[BUFFER_SIZE - 1] != '\0')
             buffer[BUFFER_SIZE - 1] = '\0';
         
 
-        printf("recieved file\n");
+        printf("File transfer completed.\n");
+
         end_t = clock();
-        total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
-        List_insertLast(dataList, total_t, (double)bytes_received / total_t);
+        total_t = (double)(end_t - start_t) * DEV / CLOCKS_PER_SEC;
+        List_insertLast(dataList, total_t, (double)(bytes_received * 8) / (total_t * 1000000) /1024*1024);
+
+        printf("Waiting for Sender response...\n");
 
         if (strcmp(buffer, "exit") == 0)
         {
+            printf("Sender sent exit message.\n");
             close(client_sock);
-            printf(stdout, "Client %s:%d disconnected\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
             close(sock);
             break;
         }
@@ -150,6 +143,8 @@ int main(int argc, char *argv[])
 
     List_print(dataList);
     List_free(dataList);
+
+    printf("Receiver end.\n");
     
     return 0;
 }

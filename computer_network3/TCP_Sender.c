@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -36,18 +37,17 @@ int main(int argc, char *argv[])
 {
     char ans[4] = "yes";
     struct sockaddr_in server;
-    char buffer[BUFFER_SIZE] = {0};
     memset(&server, 0, sizeof(server));
     int big_size = 2097152;
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     char *message = util_generate_random_data(big_size);
 
+    printf("Starting Sender.\n");
     if (sock < 0)
     {
         perror("socket(2)");
         return 1;
     }
-    printf("socket was good \n");
     if (strcmp(argv[6], "reno") == 0)
     {
         // set to be reno
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printf("Invalid TCP congestion control algorithm\n");
+        printf("Invalid TCP congestion control algorithm.\n");
         return -1;
     }
 
@@ -74,11 +74,10 @@ int main(int argc, char *argv[])
     server.sin_family = AF_INET;
     server.sin_port = htons(atoi(argv[4]));
 
+    printf("Connecting to Reciever...\n");
     int con = connect(sock, (struct sockaddr *)&server, sizeof(server));
-    printf("the con is %d\n", con);
     if (con < 0)
     {
-        printf("badd\n");
         perror("connect(2)");
         close(sock);
         return 1;
@@ -89,7 +88,8 @@ int main(int argc, char *argv[])
     while (1)
     {
         bytesSent = 0;
-        // puts("int the sender loop");
+
+        printf("Reciever connected, beginning to send file...\n");
 
         while (bytesSent < big_size)
         {
@@ -108,37 +108,22 @@ int main(int argc, char *argv[])
                 return 1;
             }
         }
-        printf("message was successfully sent .\n");
-        printf("message size was %d\n", bytesSent);
+        printf("File was successfully sent.\n");
 
-        printf("resend?");
+        printf("Do you want to resend the file? [yes/no]: ");
         scanf("%s", ans);
         if (ans[0] != 'y')
         {
             break;
         }
-        // int bytes_sent = send(sock, message, strlen(message) + 1, 0);
-        //  if (bytes_sent == -1)
-        //  {
-        //      perror("send() failed");
-        //  }
-        //  else if (bytes_sent == 0)
-        //  {
-        //      printf("peer has closed the TCP connection prior to send().\n");
-        //  }
-        //  else if (strlen(message) + 1 > bytes_sent)
-        //  {
-        //      printf("sent only %d bytes from the required %d.\n", strlen(message) + 1, bytes_sent);
-        //  }
-        //  else
-        //  {
-        //      printf("message was successfully sent .\n");
-        //  }
     }
+
     free(message);
     char *exit = "exit";
     bytesSent = send(sock, exit, strlen(exit) + 1, 0);
-    printf("%d\n", bytesSent);
     close(sock);
+
+    printf("Sender end.\n");
+
     return 0;
 }

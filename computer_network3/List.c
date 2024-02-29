@@ -92,11 +92,11 @@ void List_print(const List *list)
 {
 	int i = 1;
 	Node* p = list->_head;
-
+	printf("\n");
 	printf("----------------------------------\n");
 	printf("-          * Statistics *        -\n");
 
-	while (p)
+	while (p->_next)
 	{
 		printf("- Run #%d Data: Time=%.2fms; Speed=%.2fMB/s\n", i, p->_speed, p->_bandwith);
 		i++;
@@ -104,7 +104,7 @@ void List_print(const List *list)
 	}
 
 	printf("-								  \n");
-	printf("- Average time: %.2f\n", calcAvgTime(list));
+	printf("- Average time: %.2fms\n", calcAvgTime(list));
 	printf("- Average bandwith: %.2fMB/s\n", calcAvgBandwith(list));
 	printf("----------------------------------\n");
 }
@@ -114,12 +114,13 @@ double calcAvgTime(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p)
+	while(p->_next)
 	{
 		sum += p->_speed;
+		p = p->_next;
 	}
 
-	return sum / list->_size;
+	return sum / (double)list->_size;
 }
 
 double calcAvgBandwith(const List *list)
@@ -127,10 +128,11 @@ double calcAvgBandwith(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p)
+	while(p->_next)
 	{
 		sum += p->_bandwith;
+		p = p->_next;
 	}
 
-	return sum / list->_size;
+	return sum / (double)list->_size;
 }
