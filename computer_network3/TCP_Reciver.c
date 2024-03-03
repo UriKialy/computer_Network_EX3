@@ -117,18 +117,16 @@ int main(int argc, char *argv[])
                 close(sock);
                 break;
             }
-
         }
 
         if (buffer[BUFFER_SIZE - 1] != '\0')
             buffer[BUFFER_SIZE - 1] = '\0';
-        
 
         printf("File transfer completed.\n");
 
         end_t = clock();
         total_t = (double)(end_t - start_t) * DEV / CLOCKS_PER_SEC;
-        List_insertLast(dataList, total_t, (double)(bytes_received * 8) / (total_t * 1000000) /1024*1024);
+        List_insertLast(dataList, total_t, (double)BUFFER_SIZE / (total_t * 1000 * 1000));
 
         printf("Waiting for Sender response...\n");
 
@@ -145,6 +143,6 @@ int main(int argc, char *argv[])
     List_free(dataList);
 
     printf("Receiver end.\n");
-    
+
     return 0;
 }
