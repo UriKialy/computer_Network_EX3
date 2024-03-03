@@ -7,9 +7,30 @@
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <stdbool.h>
+#include <sys/time.h>
+#include <time.h>
 
+#define BITS_TO_BYTES 8
+#define BUFFER_SIZE 65536
 #define SERVER_IP_ADDRESS "127.0.0.1"
 
+typedef struct _RUDP_Packet
+
+{
+    // Header for RUDP
+    unsigned short length:BITS_TO_BYTES + BITS_TO_BYTES;
+    unsigned short checksum:BITS_TO_BYTES + BITS_TO_BYTES;
+    unsigned short ack:BITS_TO_BYTES;
+    unsigned short fin:BITS_TO_BYTES;
+    unsigned short syn:BITS_TO_BYTES;
+    unsigned short seq:BITS_TO_BYTES;
+
+    // Message to deliver
+    char *mes;
+
+} RUDP_Packet;
+RUDP_Packet* create_Packet();
+RUDP_Packet* set_Packet(short length,short checksum,char ack,char fin,char syn,short seq,char *mes);
 // A struct that represents RUDP Socket
 typedef struct _rudp_socket
 {
