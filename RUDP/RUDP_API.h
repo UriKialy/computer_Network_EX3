@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <time.h>
+#include <errno.h>
 
 #define TIMES_TO_SEND 100
 #define BITS_TO_BYTES 8
