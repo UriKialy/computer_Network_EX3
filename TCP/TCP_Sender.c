@@ -8,7 +8,10 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#define BUFFER_SIZE 65536
+#define IP_ARG 2
+#define PORT_ARG 4
+#define ALGO_ARG 6
+#define FILE_SIZE 2097152
 
 // make random data
 char *util_generate_random_data(unsigned int size)
@@ -35,12 +38,11 @@ char *util_generate_random_data(unsigned int size)
 
 int main(int argc, char *argv[])
 {
-    char ans[4] = "yes";
+    char ans[PORT_ARG] = "yes";
     struct sockaddr_in server;
     memset(&server, 0, sizeof(server));
-    int big_size = 2097152;
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    char *message = util_generate_random_data(big_size);
+    char *message = util_generate_random_data(FILE_SIZE);
 
     printf("Starting Sender.\n");
     if (sock < 0)
@@ -48,12 +50,12 @@ int main(int argc, char *argv[])
         perror("socket(2)");
         return 1;
     }
-    if (strcmp(argv[6], "reno") == 0)
+    if (strcmp(argv[ALGO_ARG], "reno") == 0)
     {
         // set to be reno
         setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "reno", strlen("reno"));
     }
-    else if (strcmp(argv[6], "cubic") == 0)
+    else if (strcmp(argv[ALGO_ARG], "cubic") == 0)
     {
         // set to be cubic
         setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "cubic", strlen("cubic"));
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (inet_pton(AF_INET, argv[2], &server.sin_addr) <= 0)
+    if (inet_pton(AF_INET, argv[IP_ARG], &server.sin_addr) <= 0)
     {
         perror("inet_pton(3)");
         close(sock);
@@ -72,7 +74,7 @@ int main(int argc, char *argv[])
     }
 
     server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(argv[4]));
+    server.sin_port = htons(atoi(argv[PORT_ARG]));
 
     printf("Connecting to Reciever...\n");
     int con = connect(sock, (struct sockaddr *)&server, sizeof(server));
@@ -91,9 +93,9 @@ int main(int argc, char *argv[])
 
         printf("Reciever connected, beginning to send file...\n");
 
-        while (bytesSent < big_size)
+        while (bytesSent < FILE_SIZE)
         {
-            int cur_sent = send(sock, message + bytesSent, big_size - bytesSent, 0);
+            int cur_sent = send(sock, message + bytesSent, FILE_SIZE - bytesSent, 0);
             bytesSent += cur_sent;
             if (cur_sent < 0)
             {
@@ -110,12 +112,18 @@ int main(int argc, char *argv[])
         }
         printf("File was successfully sent.\n");
 
+        char buff[2];
+        recv(sock, buff, sizeof(buff), 0);
+
         printf("Do you want to resend the file? [yes/no]: ");
         scanf("%s", ans);
         if (ans[0] != 'y')
         {
             break;
         }
+
+        send(sock, ans, strlen(ans) + 1, 0);
+        recv(sock, buff, sizeof(buff), 0);
     }
 
     free(message);

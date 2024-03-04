@@ -7,20 +7,25 @@
 #include <time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/time.h>
 #include "List.c"
 
 #define MAX_CLIENTS 1
+#define PORT_ARG 2
+#define ALGO_ARG 4
+#define MUL 1000
+#define DEV 1024
 #define BUFFER_SIZE 2097152
-#define DEV 1000
 #define IP "127.0.0.1"
 
 int main(int argc, char *argv[])
 {
+    struct timeval start, end;
+    int bytes_received = 0;
     List *dataList = List_alloc();
     struct sockaddr_in server;
     struct sockaddr_in client;
     socklen_t client_len = sizeof(client);
-    clock_t start_t, end_t;
     double total_t;
 
     int opt = 1;
@@ -43,7 +48,7 @@ int main(int argc, char *argv[])
 
     server.sin_addr.s_addr = inet_addr(IP);
     server.sin_family = AF_INET;
-    server.sin_port = htons((atoi(argv[2])));
+    server.sin_port = htons((atoi(argv[PORT_ARG])));
     if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
     {
         perror("bind(2)");
@@ -58,12 +63,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (strcmp(argv[4], "reno") == 0)
+    if (strcmp(argv[ALGO_ARG], "reno") == 0)
     {
         // set to be reno
         setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "reno", strlen("reno"));
     }
-    else if (strcmp(argv[4], "cubic") == 0)
+    else if (strcmp(argv[ALGO_ARG], "cubic") == 0)
     {
         // set to be cubic
         setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "cubic", strlen("cubic"));
@@ -76,8 +81,6 @@ int main(int argc, char *argv[])
 
     printf("Waiting for TCP connection...\n");
     int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
-    int filesize = 2097152;
-    int bytes_received = 0;
 
     while (1)
     {
@@ -92,10 +95,10 @@ int main(int argc, char *argv[])
         printf("Sender connected, beginning to receive file...\n");
         // Create a buffer to store the received message.
         char buffer[BUFFER_SIZE] = {0};
-        start_t = clock();
+        gettimeofday(&start, NULL);
 
         // Receive a message from the client and store it in the buffer.
-        while (bytes_received < filesize)
+        while (bytes_received < BUFFER_SIZE)
         {
             int currBytes = recv(client_sock, buffer + bytes_received, BUFFER_SIZE - bytes_received, 0);
 
@@ -124,19 +127,28 @@ int main(int argc, char *argv[])
 
         printf("File transfer completed.\n");
 
-        end_t = clock();
-        total_t = (double)(end_t - start_t) * DEV / CLOCKS_PER_SEC;
-        List_insertLast(dataList, total_t, (double)BUFFER_SIZE / (total_t * 1000 * 1000));
+        gettimeofday(&end, NULL);
+        total_t = ((end.tv_sec - start.tv_sec) * 1000 + ((double)(end.tv_usec - start.tv_usec) / 1000));
+        double bandwith = ((double)(BUFFER_SIZE / 1024) / 1024) / (total_t / 1000);
+        List_insertLast(dataList, total_t, bandwith);
+
+        send(client_sock, "\0", 2, 0);
 
         printf("Waiting for Sender response...\n");
 
-        if (strcmp(buffer, "exit") == 0)
+        char buff[32] = { 0 };
+
+        recv(client_sock, buff, sizeof(buff), 0);
+
+        if (strcmp(buff, "exit") == 0)
         {
             printf("Sender sent exit message.\n");
             close(client_sock);
             close(sock);
             break;
         }
+
+        send(client_sock, "\0", 2, 0);
     }
 
     List_print(dataList);
