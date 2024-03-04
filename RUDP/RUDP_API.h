@@ -10,8 +10,10 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define TIMES_TO_SEND 5
+#define TIMES_TO_SEND 100
 #define BITS_TO_BYTES 8
+
+#define TIMEOUT_MICROSECS 50000
 #define BUFFER_SIZE 65536
 #define SERVER_IP_ADDRESS "127.0.0.1"
 
@@ -28,7 +30,7 @@ typedef struct _RUDP_Header
 typedef struct _RUDP_Packet
 {
     // Header for RUDP
-    RUDP_Header header;
+    RUDP_Header* header;
 
     // Message to deliver
     char mes[BUFFER_SIZE];
@@ -38,7 +40,7 @@ typedef struct _RUDP_Packet
 // [[ RUDP HRADER ] [ PAYLOAD ]]
 
 RUDP_Packet *create_Packet(void);
-void set_Packet(RUDP_Packet packet, char ack, char fin, char syn, short seq, char mes[BUFFER_SIZE]);
+void set_Packet(RUDP_Packet* packet, char ack, char fin, char syn, short seq, char mes[BUFFER_SIZE]);
 
 // A struct that represents RUDP Socket
 typedef struct _rudp_socket

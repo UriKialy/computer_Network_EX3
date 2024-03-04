@@ -41,8 +41,8 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
 {
     RUDP_Packet *pack = create_Packet();
     struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = TIMEOUT_MICROSECS;
 
     if (sockfd->isConnected)
     {
@@ -100,8 +100,8 @@ int rudp_accept(RUDP_Socket *sockfd)
 {
     RUDP_Packet *pack = create_Packet();
     struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 500;
 
     if (sockfd->isConnected)
     {
@@ -141,6 +141,7 @@ int rudp_accept(RUDP_Socket *sockfd)
 // Fails if called when the socket is disconnected.
 int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
 {
+    
 }
 
 // Sends data stores in buffer to the other side. Returns the number of sent bytes on success, 0 if got FIN packet (disconnect), and -1 on error. Fails if called when the socket is disconnected.
