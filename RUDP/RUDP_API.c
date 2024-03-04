@@ -72,7 +72,7 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         return 0;
     }
 
-    for (int i = 0; i < TIMES_TO_SEND; i++)
+    for (int i = 0; i < 100; i++)
     {
         int ack = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
         if (ack == 0)
