@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         while (bytesSent < FILE_SIZE)
         {
             int cur_sent = send(sock, message + bytesSent, FILE_SIZE - bytesSent, 0);
-            bytesSent += cur_sent;
+            
             if (cur_sent < 0)
             {
                 perror("send(2)");
@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
                 close(sock);
                 return 1;
             }
+            bytesSent += cur_sent;
         }
         printf("File was successfully sent.\n");
 

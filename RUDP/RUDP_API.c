@@ -43,7 +43,6 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = TIMEOUT_MICROSECS;
-    int timeout_oc = 0;
 
     if (sockfd->isConnected)
     {
@@ -74,7 +73,7 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         return 0;
     }
 
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < TIMES_TO_SEND; i++)
     {
         int ack = sendto(sockfd->socket_fd, &pack, sizeof(RUDP_Packet), 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
         if (ack == 0)
@@ -95,25 +94,12 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         }
         else if (syn_Ack == -1)
         {
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-            {
-                timeout_oc = 1;
-            }
-            else
-            {
-                perror("recvfrom(2)");
-                return 0;
-            }
+            return -1;
         }
 
         if (!pack->header->syn || !pack->header->ack)
         {
             printf("Didn't Received SYN-ACK.\n");
-            return 0;
-        }
-        if (timeout_oc)
-        {
-            perror("Timout occured - Aborting Connection\n");
             return 0;
         }
     }
@@ -122,7 +108,6 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
 // Accepts incoming connection request and completes the handshake, returns 0 on failure and 1 on success. Fails if called when the socket is connected/set to client.
 int rudp_accept(RUDP_Socket *sockfd)
 {
-    int timeout_oc = 0;
     RUDP_Packet *pack = create_Packet();
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -149,24 +134,11 @@ int rudp_accept(RUDP_Socket *sockfd)
     }
     else if (syn_Ack == -1)
     {
-        if (errno == EWOULDBLOCK || errno == EAGAIN)
-        {
-            timeout_oc = 1;
-        }
-        else
-        {
-            perror("recvfrom(2)");
-            return 0;
-        }
+        return -1;
     }
     if (!pack->header->ack)
     {
         printf("Didn't Received SYN-ACK.\n");
-        return 0;
-    }
-    if (timeout_oc)
-    {
-        perror("Timout occured - Aborting Connection\n");
         return 0;
     }
 
@@ -180,31 +152,36 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
 {
     socklen_t dest_addr_len = sizeof(struct sockaddr);
     RUDP_Packet *receivePacket = create_Packet();
-    memset(receivePacket, 0, sizeof(RUDP_Packet));
-    int timeout_oc = 0;
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = TIMEOUT_MICROSECS;
 
     if (!sockfd->isConnected)
         return -1;
     int bytes_rec = recvfrom(sockfd->socket_fd, receivePacket, sizeof(RUDP_Packet), 0, (struct sockaddr_in *)&sockfd->dest_addr, dest_addr_len);
+    //    int timeout_oc = 0;
+    // if (bytes_rec < 0)
+    // {
+    //     if (errno == EWOULDBLOCK || errno == EAGAIN)
+    //     {
+    //         timeout_oc = 1;
+    //     }
+    //     else
+    //     {
+    //         perror("recvfrom(2)");
+    //         close(sockfd->socket_fd);
+    //         return -1;
+    //     }
+    // }
+    // if (timeout_oc)
+    // {
+    //     perror("Timout occured - Aborting Connection\n");
+    //     return -1;
+    // }
     if (bytes_rec < 0)
     {
-        if (errno == EWOULDBLOCK || errno == EAGAIN)
-        {
-            timeout_oc = 1;
-        }
-        else
-        {
-            perror("recvfrom(2)");
-            close(sockfd->socket_fd);
-            return -1;
-        }
-    }
-    if (timeout_oc)
-    {
-        perror("Timout occured - Aborting Connection\n");
         return -1;
     }
-
     else if (bytes_rec == 0)
     {
         fprintf(stdout, "%s:%d disconnected\n", inet_ntoa(sockfd->dest_addr.sin_addr), (int)ntohs(sockfd->dest_addr.sin_port));
@@ -224,27 +201,149 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
     }
 
     strncpy(buffer, receivePacket->mes, buffer_size);
+
+    set_Packet(receivePacket, 1, 0, 0, receivePacket->header->seq + 1, 0);
+
+    int bytes_send = sendto(sockfd->socket_fd, &set_Packet, sizeof(RUDP_Packet), 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+
     return bytes_rec;
 }
 
 // Sends data stores in buffer to the other side. Returns the number of sent bytes on success, 0 if got FIN packet (disconnect), and -1 on error. Fails if called when the socket is disconnected.
-int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {}
+int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsigned short seq)
+{
+    int bytes_sent = 0;
+    int timeout_oc = 0;
+    RUDP_Packet *pack = create_Packet();
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 500;
+
+    if (sockfd->isConnected)
+    {
+        perror("Socket already connected\n");
+        close(sockfd->socket_fd);
+        return 0;
+    }
+    else if (!sockfd->isServer)
+    {
+        perror("Can't accept a client\n");
+        close(sockfd->socket_fd);
+        return 0;
+    }
+
+    set_Packet(pack, 0, 0, 1, seq, 0);
+
+    for (int i = 0; i < TIMES_TO_SEND; i++)
+    {
+        bytes_sent = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+
+        if (bytes_sent == 0)
+        {
+            printf("Receive failed.\n");
+            return 0;
+        }
+        else if (bytes_sent == -1)
+        {
+            if (errno == EWOULDBLOCK || errno == EAGAIN)
+            {
+                timeout_oc = 1;
+            }
+            else
+            {
+                perror("recvfrom(2)");
+                return 0;
+            }
+        }
+        if (timeout_oc)
+        {
+            perror("Timout occured - Aborting Connection\n");
+            return -2;
+        }
+
+        int ack = recvfrom(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+        if (ack < 0)
+        {
+            if (ack == 0)
+            {
+                printf("Receive failed.\n");
+                return 0;
+            }
+            else if (ack == -1)
+            {
+                return -1;
+            }
+        }
+    }
+
+    return bytes_sent;
+}
 
 // Disconnects from an actively connected socket. Returns 1 on success, 0 when the socket is already disconnected (failure).
-int rudp_disconnect(RUDP_Socket *sockfd){
-    if(!sockfd->isConnected)
+int rudp_disconnect(RUDP_Socket *sockfd)
+{
+    RUDP_Packet *pack = create_Packet();
+
+    if (!sockfd->isConnected)
     {
         perror("Socket already disconnected");
         return 0;
     }
-    sockfd->isConnected = false;
-    return 1;
+    int sent = send_fin(sockfd);
+    int receive_bytes = recvfrom(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+
+    if (sent && pack->header->ack)
+    {
+        sockfd->isConnected = false;
+        return 1;
+    }
+
+    
 }
 
 // This function releases all the memory allocation and resources of the socket.
-int rudp_close(RUDP_Socket *sockfd) {}
+int rudp_close(RUDP_Socket *sockfd)
+{
+    close(sockfd->socket_fd);
+    free(sockfd);
+}
 
 ///-------HELPER FUNCTIONS--------///
+
+int send_fin(RUDP_Socket *sockfd)
+{
+    RUDP_Packet *pack = create_Packet();
+    set_Packet(pack, 0, 1, 0, 0, 0);
+    int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    if (bytes_send == 0)
+    {
+        printf("send failed.\n");
+        return 0;
+    }
+    else if (bytes_send == -1)
+    {
+        perror("send(2)");
+        return 0;
+    }
+    return 1;
+}
+int send_ack(RUDP_Socket *sockfd, int seq)
+{
+    RUDP_Packet *pack = create_Packet();
+    set_Packet(pack, 1, 0, 0, seq + 1, 0);
+    int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    if (bytes_send == 0)
+    {
+        printf("send failed.\n");
+        return 0;
+    }
+    else if (bytes_send == -1)
+    {
+        perror("send(2)");
+        return 0;
+    }
+    return 1;
+}
 
 RUDP_Packet *create_Packet(void)
 {
@@ -268,7 +367,7 @@ void set_Packet(RUDP_Packet *packet, char ack, char fin, char syn, short seq, ch
     packet->header->syn = syn;
     packet->header->seq = seq;
     strcpy(*packet->mes, mes);
-    packet->header->length = strlen(mes) + sizeof(RUDP_Header);
+    packet->header->length = strlen(mes);
     packet->header->checksum = calculate_checksum((void *)packet, packet->header->length);
 }
 
