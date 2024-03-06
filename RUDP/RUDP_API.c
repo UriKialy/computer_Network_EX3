@@ -297,8 +297,6 @@ int rudp_disconnect(RUDP_Socket *sockfd)
         sockfd->isConnected = false;
         return 1;
     }
-
-    
 }
 
 // This function releases all the memory allocation and resources of the socket.
