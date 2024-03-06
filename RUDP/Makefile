@@ -6,7 +6,7 @@ RCS = rcs
 RUDP = RUDP_API.a RUDP_Receiver RUDP_Sender
 .PHONY: all clean
 
-all:  rudp
+all: rudp
 
 rudp: $(RUDP)
 

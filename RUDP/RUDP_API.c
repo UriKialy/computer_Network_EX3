@@ -103,6 +103,9 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
             return 0;
         }
     }
+    
+    sockfd->isConnected = true;
+    return 1;
 }
 
 // Accepts incoming connection request and completes the handshake, returns 0 on failure and 1 on success. Fails if called when the socket is connected/set to client.
@@ -141,9 +144,11 @@ int rudp_accept(RUDP_Socket *sockfd)
         printf("Didn't Received SYN-ACK.\n");
         return 0;
     }
-
+    
     set_Packet(pack, 1, 0, 1, 0, 0);
     int ack = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    sockfd->isConnected = true;
+    return 1;
 }
 
 // Receives data from the other side and put it into the buffer. Returns the number of received bytes on success, 0 if got FIN packet (disconnect), and -1 on error.
@@ -159,25 +164,6 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
     if (!sockfd->isConnected)
         return -1;
     int bytes_rec = recvfrom(sockfd->socket_fd, receivePacket, sizeof(RUDP_Packet), 0, (struct sockaddr_in *)&sockfd->dest_addr, dest_addr_len);
-    //    int timeout_oc = 0;
-    // if (bytes_rec < 0)
-    // {
-    //     if (errno == EWOULDBLOCK || errno == EAGAIN)
-    //     {
-    //         timeout_oc = 1;
-    //     }
-    //     else
-    //     {
-    //         perror("recvfrom(2)");
-    //         close(sockfd->socket_fd);
-    //         return -1;
-    //     }
-    // }
-    // if (timeout_oc)
-    // {
-    //     perror("Timout occured - Aborting Connection\n");
-    //     return -1;
-    // }
     if (bytes_rec < 0)
     {
         return -1;
@@ -315,10 +301,10 @@ int send_fin(RUDP_Socket *sockfd)
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     if (bytes_send == 0)
     {
-        printf("send failed.\n");
-        return 0;
+        printf("connection closed.\n");
+        return -1;
     }
-    else if (bytes_send == -1)
+    else if (bytes_send < 0)
     {
         perror("send(2)");
         return 0;
@@ -332,10 +318,10 @@ int send_ack(RUDP_Socket *sockfd, int seq)
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     if (bytes_send == 0)
     {
-        printf("send failed.\n");
-        return 0;
+        printf("connection closed.\n");
+        return -1;
     }
-    else if (bytes_send == -1)
+    else if (bytes_send < 0)
     {
         perror("send(2)");
         return 0;
@@ -387,3 +373,23 @@ unsigned short int calculate_checksum(void *data, unsigned int bytes)
         total_sum = (total_sum & 0xFFFF) + (total_sum >> 16);
     return (~((unsigned short int)total_sum));
 }
+
+  //    int timeout_oc = 0;
+    // if (bytes_rec < 0)
+    // {
+    //     if (errno == EWOULDBLOCK || errno == EAGAIN)
+    //     {
+    //         timeout_oc = 1;
+    //     }
+    //     else
+    //     {
+    //         perror("recvfrom(2)");
+    //         close(sockfd->socket_fd);
+    //         return -1;
+    //     }
+    // }
+    // if (timeout_oc)
+    // {
+    //     perror("Timout occured - Aborting Connection\n");
+    //     return -1;
+    // }

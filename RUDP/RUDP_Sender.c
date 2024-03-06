@@ -11,7 +11,6 @@
 
 #define IP_ARG 2
 #define PORT_ARG 4
-#define ALGO_ARG 6
 #define FILE_SIZE 2097152
 
 /*
@@ -39,40 +38,22 @@ char *util_generate_random_data(unsigned int size)
 int main(int argc, char *argv[])
 {
 
-    // int port = 0;
-    // char SERVER_IP[20] = {0};
-    // if (argc != 5)
-    // {
-    //     printf("invalid command");
-    //     return 1;
-    // }
-    // printf("Starting Sender...\n");
-    // for (int i = 0; i <= argc; i++)
-    // {
-    //     if (strcmp(argv[i], "-p") == 0)
-    //     {
-    //         port = atoi(argv[i + 1]);
-    //     }
-    //     else if (strcmp(argv[i], "-ip") == 0)
-    //     {
-    //         strcpy(SERVER_IP, argv[i + 1]);
-    //     }
-    // }
     int bytesSent = 0;
     char ans[PORT_ARG] = "yes";
-    RUDP_Socket *sock = rudp_socket(true, argv[PORT_ARG]);
+    RUDP_Socket *sock = rudp_socket(false, argv[PORT_ARG]);
     char *message = util_generate_random_data(FILE_SIZE);
 
     printf("Starting Sender.\n");
 
     printf("Connecting to Reciever...\n");
-    int con = rudp_connect(sock, argv[IP_ARG], argv[PORT_ARG]);
-    if (con < 0)
+    if (rudp_connect(sock, argv[IP_ARG], argv[PORT_ARG]) < 0)
     {
         perror("Failed to connect");
         rudp_close(sock);
         return 1;
     }
+
+
 
     while (1)
     {
@@ -107,9 +88,6 @@ int main(int argc, char *argv[])
             }
         }
         printf("File was successfully sent.\n");
-
-        char buff[2];
-        recv(sock, buff, sizeof(buff), 0);
 
         printf("Do you want to resend the file? [yes/no]: ");
         scanf("%s", ans);
