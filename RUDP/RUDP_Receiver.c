@@ -28,107 +28,53 @@ int main(int argc, char *argv[])
     }
     printf("Starting Receiver.\n");
 
+    
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
+    char buffer[BUFFER_SIZE] = {0};
     List *dataList = List_alloc();
 
     RUDP_Socket *serverSock = rudp_socket(true, argv[PORT_ARG]);
-    RUDP_Socket *clientSock = rudp_socket(false, argv[PORT_ARG]);
-
-    if (!rudp_accept(serverSock))
+    
+    // try to connect
+    if (rudp_accept(serverSock)<1)
     {
         printf("Couldn't accepted client, aborting...\n");
         rudp_close(serverSock);
         return -1;
     }
 
-    /*int opt = 1;
-
-    if (serverSock < 1|| clientSock < 1  )
-    {
-        perror("socket(2)");
-        return 1;
-    }
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    {
-        perror("setsockopt(2)");
-        close(sock);
-        return 1;
-    }
-
-    server.sin_addr.s_addr = inet_addr(IP);
-    server.sin_family = AF_INET;
-    server.sin_port = htons((atoi(argv[PORT_ARG])));
-    if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
-    {
-        perror("bind(2)");
-        close(sock);
-        return 1;
-    }
-
-    if (listen(sock, MAX_CLIENTS) < 0)
-    {
-        perror("listen(2)");
-        close(sock);
-        return 1;
-    }
-
-    if (strcmp(argv[ALGO_ARG], "reno") == 0)
-    {
-        // set to be reno
-        setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "reno", strlen("reno"));
-    }
-    else if (strcmp(argv[ALGO_ARG], "cubic") == 0)
-    {
-        // set to be cubic
-        setsockopt(sock, IPPROTO_TCP, TCP_CONGESTION, "cubic", strlen("cubic"));
-    }
-    else
-    {
-        printf("Invalid TCP congestion control algorithm.\n");
-        return -1;
-    }
-
     printf("Waiting for TCP connection...\n");
-    int client_sock = accept(sock, (struct sockaddr *)&client, &client_len); // try to connect
+
 
     while (1)
     {
-        bytes_received = 0;
 
-        if (client_sock < 0)
-        {
-            perror("accept(2)");
-            close(sock);
-            return 1;
-        }
         printf("Sender connected, beginning to receive file...\n");
         // Create a buffer to store the received message.
-        char buffer[BUFFER_SIZE] = {0};
+        
         gettimeofday(&start, NULL);
 
         // Receive a message from the client and store it in the buffer.
         while (bytes_received < BUFFER_SIZE)
         {
-            int currBytes = recv(client_sock, buffer + bytes_received, BUFFER_SIZE - bytes_received, 0);
+            int currBytes = rudp_recv(serverSock, buffer, BUFFER_SIZE);
 
             bytes_received += currBytes;
 
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)
             {
-                perror("recv(2)");
-                close(client_sock);
-                close(sock);
+                perror("Receive was unsuccessful");
+                rudp_close(serverSock);
                 return 1;
             }
 
             else if (currBytes == 0)
             {
-                fprintf(stdout, "Client %s:%d disconnected\n", inet_ntoa(client.sin_addr), (int)ntohs(client.sin_port));
-                close(client_sock);
-                close(sock);
+                fprintf(stdout, "Client disconnected\n");
+                rudp_close(serverSock);
                 break;
             }
         }
@@ -137,29 +83,19 @@ int main(int argc, char *argv[])
             buffer[BUFFER_SIZE - 1] = '\0';
 
         printf("File transfer completed.\n");
-
         gettimeofday(&end, NULL);
         total_t = ((end.tv_sec - start.tv_sec) * 1000 + ((double)(end.tv_usec - start.tv_usec) / 1000));
         double bandwith = ((double)(BUFFER_SIZE / 1024) / 1024) / (total_t / 1000);
         List_insertLast(dataList, total_t, bandwith);
-
-        send(client_sock, "\0", 2, 0);
-
         printf("Waiting for Sender response...\n");
-
-        char buff[32] = {0};
-
-        recv(client_sock, buff, sizeof(buff), 0);
-
-        if (strcmp(buff, "exit") == 0)
+        rudp_recv(serverSock, buffer, sizeof(buffer));
+        if (strcmp(buffer, "FIN") == 0)
         {
+
             printf("Sender sent exit message.\n");
-            close(client_sock);
-            close(sock);
+            rudp_close(serverSock);
             break;
         }
-
-        send(client_sock, "\0", 2, 0);
     }
 
     List_print(dataList);
@@ -167,5 +103,5 @@ int main(int argc, char *argv[])
 
     printf("Receiver end.\n");
 
-    return 0;*/
+    return 0;
 }

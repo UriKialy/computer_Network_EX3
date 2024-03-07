@@ -65,7 +65,7 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         return -1;
     }
 
-    set_Packet(pack, 1, 0, 0, 0, 0);
+    set_Packet(pack, 1, 0, 0, 0, "SYN");
 
     if (setsockopt(sockfd->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
     {
@@ -145,7 +145,7 @@ int rudp_accept(RUDP_Socket *sockfd)
         return 0;
     }
     
-    set_Packet(pack, 1, 0, 1, 0, 0);
+    set_Packet(pack, 1, 0, 1, 0, "SYN-ACK");
     int ack = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     sockfd->isConnected = true;
     return 1;
@@ -188,9 +188,7 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
 
     strncpy(buffer, receivePacket->mes, buffer_size);
 
-    set_Packet(receivePacket, 1, 0, 0, receivePacket->header->seq + 1, 0);
-
-    int bytes_send = sendto(sockfd->socket_fd, &set_Packet, sizeof(RUDP_Packet), 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    send_ack(sockfd, receivePacket->header->seq);
 
     return bytes_rec;
 }
@@ -297,7 +295,7 @@ int rudp_close(RUDP_Socket *sockfd)
 int send_fin(RUDP_Socket *sockfd)
 {
     RUDP_Packet *pack = create_Packet();
-    set_Packet(pack, 0, 1, 0, 0, 0);
+    set_Packet(pack, 0, 1, 0, 0, "FIN");
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     if (bytes_send == 0)
     {
@@ -314,7 +312,7 @@ int send_fin(RUDP_Socket *sockfd)
 int send_ack(RUDP_Socket *sockfd, int seq)
 {
     RUDP_Packet *pack = create_Packet();
-    set_Packet(pack, 1, 0, 0, seq + 1, 0);
+    set_Packet(pack, 1, 0, 0, seq + 1, "ACK");
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     if (bytes_send == 0)
     {

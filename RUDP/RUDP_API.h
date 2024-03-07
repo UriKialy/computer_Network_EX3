@@ -14,7 +14,7 @@
 #define TIMES_TO_SEND 100
 #define BITS_TO_BYTES 8
 
-#define TIMEOUT_MICROSECS 50000
+#define TIMEOUT_MICROSECS 50000000
 #define BUFFER_SIZE 65536
 #define SERVER_IP_ADDRESS "127.0.0.1"
 
@@ -76,7 +76,7 @@ int rudp_disconnect(RUDP_Socket *sockfd);
 int rudp_close(RUDP_Socket *sockfd);
 
 // This function Sends fyn 
-int send_fyn(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size);
-
+int send_fin(RUDP_Socket *sockfd);
 // This function Sends ack
-int send_ack(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size,int ack);
+int send_ack(RUDP_Socket *sockfd, int seq);
+unsigned short int calculate_checksum(void *data, unsigned int bytes);

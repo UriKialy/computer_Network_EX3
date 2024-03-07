@@ -99,8 +99,6 @@ int main(int argc, char *argv[])
     }
 
     free(message);
-    char *exit = "exit";
-    bytesSent = rudp_send(sock, exit, strlen(exit) + 1, 0);
     rudp_disconnect(sock);
     rudp_close(sock);
 

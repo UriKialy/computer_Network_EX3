@@ -3,7 +3,7 @@ AR = ar
 FLAGS = -g -Wall
 RCS = rcs
 
-RUDP = RUDP_API.a RUDP_Receiver RUDP_Sender
+RUDP = RUDP_API.a RUDP_Receiver RUDP_Sender 
 .PHONY: all clean
 
 all: rudp
@@ -13,7 +13,7 @@ rudp: $(RUDP)
 RUDP_Receiver: RUDP_Receiver.o RUDP_API.a
 	$(CC) $(FLAGS) $^ -o $@
 
-RUDP_Receiver.o: RUDP_Receiver.c RUDP_API.h
+RUDP_Receiver.o: RUDP_Receiver.c RUDP_API.h List.c List.h
 	$(CC) $(FLAGS) -c $<
 
 RUDP_Sender: RUDP_Sender.o RUDP_API.a
