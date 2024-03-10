@@ -96,7 +96,7 @@ void List_print(const List *list)
 	printf("----------------------------------\n");
 	printf("-          * Statistics *        -\n");
 
-	while (p->_next)
+	while (p)
 	{
 		printf("- Run #%d Data: Time=%.2fms; Speed=%.2fMB/s\n", i, p->_speed, p->_bandwith);
 		i++;
@@ -114,7 +114,7 @@ double calcAvgTime(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p->_next)
+	while(p)
 	{
 		sum += p->_speed;
 		p = p->_next;
@@ -128,7 +128,7 @@ double calcAvgBandwith(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p->_next)
+	while(p)
 	{
 		sum += p->_bandwith;
 		p = p->_next;
