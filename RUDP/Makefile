@@ -1,6 +1,6 @@
 CC = gcc
 AR = ar
-FLAGS = -g -Wall
+FLAGS = -g 
 RCS = rcs
 
 RUDP = RUDP_API.a RUDP_Receiver RUDP_Sender 

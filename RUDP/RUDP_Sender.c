@@ -46,14 +46,12 @@ int main(int argc, char *argv[])
     printf("Starting Sender.\n");
 
     printf("Connecting to Reciever...\n");
-    if (rudp_connect(sock, argv[IP_ARG], argv[PORT_ARG]) < 0)
+    if (rudp_connect(sock, argv[IP_ARG], atoi(argv[PORT_ARG])) < 0)
     {
-        perror("Failed to connect");
+        printf("Failed to connect.\n");
         rudp_close(sock);
         return 1;
     }
-
-
 
     while (1)
     {
@@ -95,7 +93,6 @@ int main(int argc, char *argv[])
         {
             break;
         }
-
     }
 
     free(message);

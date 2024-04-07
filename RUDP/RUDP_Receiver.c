@@ -21,24 +21,23 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
-    {
-        printf("Illegal command!\n");
-        return -1;
-    }
-    printf("Starting Receiver.\n");
+    // if (argc != 3)
+    // {
+    //     printf("Illegal command!\n");
+    //     return -1;
+    // }
+    // printf("Starting Receiver.\n");
 
-    
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
     char buffer[BUFFER_SIZE] = {0};
     List *dataList = List_alloc();
 
-    RUDP_Socket *serverSock = rudp_socket(true, argv[PORT_ARG]);
-    
+    RUDP_Socket *serverSock = rudp_socket(true, atoi(argv[PORT_ARG]));
+
     // try to connect
-    if (rudp_accept(serverSock)<1)
+    if (rudp_accept(serverSock) < 1)
     {
         printf("Couldn't accepted client, aborting...\n");
         rudp_close(serverSock);
@@ -47,13 +46,12 @@ int main(int argc, char *argv[])
 
     printf("Waiting for TCP connection...\n");
 
-
     while (1)
     {
 
         printf("Sender connected, beginning to receive file...\n");
         // Create a buffer to store the received message.
-        
+
         gettimeofday(&start, NULL);
 
         // Receive a message from the client and store it in the buffer.
