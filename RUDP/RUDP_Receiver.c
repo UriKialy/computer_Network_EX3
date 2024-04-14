@@ -36,6 +36,9 @@ int main(int argc, char *argv[])
 
     RUDP_Socket *serverSock = rudp_socket(true, atoi(argv[PORT_ARG]));
 
+    printf("Starting Receiver.\n");
+    printf("Waiting for RUDP connection...\n");
+
     // try to connect
     if (rudp_accept(serverSock) < 1)
     {
@@ -44,7 +47,6 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    printf("Waiting for TCP connection...\n");
 
     while (1)
     {

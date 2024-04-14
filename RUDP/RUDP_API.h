@@ -15,7 +15,7 @@
 #define BITS_TO_BYTES 8
 
 #define TIMEOUT_MICROSECS 500000
-#define BUFFER_SIZE 65536
+#define BUFFER_SIZE 2048
 #define SERVER_IP_ADDRESS "127.0.0.1"
 
 typedef struct _RUDP_Header
