@@ -50,11 +50,12 @@ void set_Packet(RUDP_Packet *packet, char ack, char fin, char syn, short seq, ch
     packet->header->syn = syn;
     packet->header->seq = seq;
     packet->header->ack = ack;
-    if(strchr(mes,'\0')==NULL){  // check if the messenge is ending with \0
+    if (strchr(mes, '\0') == NULL)
+    { // check if the messenge is ending with \0
         perror("messenge too long wtf");
         exit(EXIT_FAILURE);
     }
-    strcpy(packet->mes,mes);
+    strcpy(packet->mes, mes);
     packet->header->length = strlen(mes);
     packet->header->checksum = calculate_checksum((void *)packet, packet->header->length), sizeof(short);
     // memset(packet->header->checksum, calculate_checksum((void *)packet, packet->header->length), sizeof(short));
@@ -104,7 +105,9 @@ int send_ack(RUDP_Socket *sockfd, int seq)
 
 void free_packet(RUDP_Packet *p)
 {
-
+    if(p==NULL){
+        return;
+    }
     free(p->header);
     free(p);
 }
@@ -204,15 +207,14 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
 
     set_Packet(pack, 1, 0, 0, 0, "SYN");
 
-    if (setsockopt(sockfd->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-    {
-        perror("setsockopt(2)");
-        free_packet(pack);
-        return 0;
-    }
-
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
+        if (setsockopt(sockfd->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+        {
+            perror("setsockopt(2)");
+            free_packet(pack);
+            return 0;
+        }
         int ack = sendto(sockfd->socket_fd, &pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
         if (ack == 0)
         {
@@ -389,7 +391,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
 
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
-        //void *=strchr(buffer,'0');
+        // void *=strchr(buffer,'0');
         bytes_sent = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
         if (bytes_sent == 0)
