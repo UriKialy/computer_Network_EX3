@@ -66,7 +66,7 @@ int send_fin(RUDP_Socket *sockfd)
     RUDP_Packet *pack = create_Packet();
     set_Packet(pack, 0, 1, 0, 0, "FIN");
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (const struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
-    if (bytes_send == 0)
+    if (bytes_send == 0) // nice
     {
         printf("connection closed.\n");
         free(pack);
@@ -272,8 +272,9 @@ int rudp_accept(RUDP_Socket *serverSock)
     // Set timeout for receiving connection request
     timeout.tv_sec = 0;
     timeout.tv_usec = TIMEOUT_MICROSECS;
-    int i=0;
+    int i=0, is_i_goot=0;
     printf("enter to the while and beyond meat");
+    
     while ( i<100) //200 tries 
     {
         FD_ZERO(&readfds);
@@ -317,11 +318,9 @@ int rudp_accept(RUDP_Socket *serverSock)
         if (recvPacket->header->syn && !(recvPacket->header->ack))
         {
             // Valid connection request (SYN packet)
-            //serverSock->dest_addr = (struct sockaddr_in *)&their_addr;
             serverSock->dest_addr.sin_family = ((struct sockaddr_in *)&their_addr)->sin_family;
             serverSock->dest_addr.sin_port = ((struct sockaddr_in *)&their_addr)->sin_port;
-            // ... copy other relevant fields if needed
-
+            is_i_goot=1;
             break;
         }
         else
@@ -330,7 +329,10 @@ int rudp_accept(RUDP_Socket *serverSock)
         }
         i++;
     }
-
+    if(!is_i_goot && i==100){
+        printf("Connection request not received\n");
+        return 0;
+    }
     // Send a SYN-ACK response to the sender
     set_Packet(recvPacket, 1, 0, 1, 0, "SYN-ACK");
     if (sendto(serverSock->socket_fd, recvPacket, BUFFER_SIZE, 0, (struct sockaddr *)&serverSock->dest_addr, addr_size) < 0)
@@ -415,7 +417,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
     else if (!sockfd->isServer)
     {
         perror("Can't accept a client\n");
-        close(sockfd->socket_fd);
+        close(sockfd->socket_fd); //close the socket and spark one up
         free_packet(sockfd);
 
         return 0;
@@ -425,7 +427,6 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
 
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
-        // void *=strchr(buffer,'0');
         bytes_sent = sendto(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
         if (bytes_sent == 0)
@@ -509,22 +510,3 @@ void print_syn_packet(RUDP_Packet *packet)
     printf("SYN: %d\n", packet->header->syn);
 }
 
-//    int timeout_oc = 0;
-// if (bytes_rec < 0)
-// {
-//     if (errno == EWOULDBLOCK || errno == EAGAIN)
-//     {
-//         timeout_oc = 1;
-//     }
-//     else
-//     {
-//         perror("recvfrom(2)");
-//         close(sockfd->socket_fd);
-//         return -1;
-//     }
-// }
-// if (timeout_oc)
-// {
-//     perror("Timout occured - Aborting Connection\n");
-//     return -1;
-// }
