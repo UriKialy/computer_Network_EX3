@@ -105,10 +105,12 @@ int send_ack(RUDP_Socket *sockfd, int seq)
 
 void free_packet(RUDP_Packet *p)
 {
-    if(p==NULL){
+    if (p == NULL)
+    {
         return;
     }
-    free(p->header);
+    if (p->header != NULL)
+        free(p->header);
     free(p);
 }
 
@@ -205,7 +207,8 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         return -1;
     }
 
-    set_Packet(pack, 1, 0, 0, 0, "SYN");
+    set_Packet(pack, 0, 0, 1, 0, "SYN");
+    print_syn_packet(pack);
 
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
@@ -215,7 +218,7 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
             free_packet(pack);
             return 0;
         }
-        int ack = sendto(sockfd->socket_fd, &pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+        int ack = sendto(sockfd->socket_fd, pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
         if (ack == 0)
         {
             printf("send failed.\n");
@@ -228,7 +231,7 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
             free_packet(pack);
             return 0;
         }
-        int syn_Ack = recvfrom(sockfd->socket_fd, &pack, sizeof(RUDP_Packet), 0, NULL, 0);
+        int syn_Ack = recvfrom(sockfd->socket_fd, pack, sizeof(RUDP_Packet), 0, NULL, 0);
         if (syn_Ack == 0)
         {
             printf("Receive failed.\n");
@@ -255,61 +258,87 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
 }
 
 // Accepts incoming connection request and completes the handshake, returns 0 on failure and 1 on success. Fails if called when the socket is connected/set to client.
-int rudp_accept(RUDP_Socket *sockfd)
+// No changes needed to struct definitions (already provided)
+
+// Implementations for create_Packet and set_Packet (assuming they are not shown)
+
+int rudp_accept(RUDP_Socket *serverSock)
 {
-    RUDP_Packet *pack = create_Packet();
+    struct sockaddr_storage their_addr;
+    socklen_t addr_size = sizeof(their_addr);
+    fd_set readfds;
     struct timeval timeout;
+    RUDP_Packet  *recvPacket= create_Packet();
+    // Set timeout for receiving connection request
     timeout.tv_sec = 0;
     timeout.tv_usec = TIMEOUT_MICROSECS;
-    printf("entered accept and created packet");
-    if (sockfd->isConnected)
+
+    while (1)
     {
-        perror("Socket already connected\n");
-        close(sockfd->socket_fd);
-        free_packet(pack);
-        return 0;
-    }
-    else if (!sockfd->isServer)
-    {
-        perror("Can't accept a client\n");
-        close(sockfd->socket_fd);
-        free_packet(pack);
-        return 0;
+        FD_ZERO(&readfds);
+        FD_SET(serverSock->socket_fd, &readfds);
+
+        // Wait for data or timeout
+        int select_ret = select(serverSock->socket_fd + 1, &readfds, NULL, NULL, &timeout);
+        if (select_ret < 0)
+        {
+            perror("select");
+            return NULL;
+        }
+        else if (select_ret == 0)
+        { // Timeout occurred
+            printf("Timeout waiting for connection request\n");
+            continue;
+        }
+
+        // Data available on the socket (serverSock->sockfd)
+        int bytes_recvd = recvfrom(serverSock->socket_fd, recvPacket, BUFFER_SIZE, 0, (struct sockaddr *)&their_addr, &addr_size);
+
+        // Check for errors during receive
+        if (bytes_recvd < 0)
+        {
+            if (errno == EWOULDBLOCK)
+            { // Timeout occurred
+                printf("Timeout waiting for connection request\n");
+                continue;
+            }
+            else
+            {
+                perror("recvfrom");
+                return NULL;
+            }
+        }
+
+        // Process received data (assuming valid RUDP packet format)
+        if (recvPacket->header->syn && !(recvPacket->header->ack))
+        {
+            // Valid connection request (SYN packet)
+            //serverSock->dest_addr = (struct sockaddr_in *)&their_addr;
+            serverSock->dest_addr.sin_family = ((struct sockaddr_in *)&their_addr)->sin_family;
+            serverSock->dest_addr.sin_port = ((struct sockaddr_in *)&their_addr)->sin_port;
+            // ... copy other relevant fields if needed
+
+            break;
+        }
+        else
+        {
+            printf("Unexpected packet received during connection setup, ignoring\n");
+        }
     }
 
-    if (setsockopt(sockfd->socket_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
+    // Send a SYN-ACK response to the sender
+    set_Packet(recvPacket, 1, 0, 1, 0, "SYN-ACK");
+    if (sendto(serverSock->socket_fd, recvPacket, BUFFER_SIZE, 0, (struct sockaddr *)&serverSock->dest_addr, addr_size) < 0)
     {
-        perror("setsockopt(2)");
-        free_packet(pack);
-        return 0;
+        perror("sendto");
+        return NULL;
     }
 
-    int syn_Ack = recvfrom(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
-    if (syn_Ack == 0)
-    {
-        printf("Receive failed.\n");
-        free_packet(pack);
-        return 0;
-    }
-    else if (syn_Ack == -1)
-    {
-        printf("fail...");
-        free_packet(pack);
-        return -1;
-    }
-    if (!pack->header->ack)
-    {
-        printf("Didn't Received SYN-ACK.\n");
-        free_packet(pack);
-        return 0;
-    }
-    printf("goot1");
-    set_Packet(pack, 1, 0, 1, 0, "SYN-ACK");
-    int ack = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
-    sockfd->isConnected = true;
-    free_packet(pack);
-    return 1;
+    printf("Connection established with client.\n");
+    return 1; // Return the received SYN packet (optional)
 }
+
+
 
 // Receives data from the other side and put it into the buffer. Returns the number of received bytes on success, 0 if got FIN packet (disconnect), and -1 on error.
 // Fails if called when the socket is disconnected.
@@ -392,7 +421,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
         // void *=strchr(buffer,'0');
-        bytes_sent = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+        bytes_sent = sendto(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
         if (bytes_sent == 0)
         {
@@ -420,7 +449,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
             return -2;
         }
 
-        int ack = recvfrom(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+        int ack = recvfrom(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
         if (ack < 0)
         {
             if (ack == 0)
@@ -453,7 +482,7 @@ int rudp_disconnect(RUDP_Socket *sockfd)
         return 0;
     }
     int sent = send_fin(sockfd);
-    int receive_bytes = recvfrom(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    int receive_bytes = recvfrom(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
     if (sent && pack->header->ack)
     {
@@ -468,6 +497,11 @@ int rudp_close(RUDP_Socket *sockfd)
 {
     close(sockfd->socket_fd);
     free(sockfd);
+}
+
+void print_syn_packet(RUDP_Packet *packet)
+{
+    printf("SYN: %d\n", packet->header->syn);
 }
 
 //    int timeout_oc = 0;
