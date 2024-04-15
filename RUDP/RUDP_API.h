@@ -11,10 +11,11 @@
 #include <time.h>
 #include <errno.h>
 
+
 #define TIMES_TO_SEND 100
 #define BITS_TO_BYTES 8
 
-#define TIMEOUT_MICROSECS 500000
+#define TIMEOUT_MICROSECS 1000000
 #define BUFFER_SIZE 2048
 #define SERVER_IP_ADDRESS "127.0.0.1"
 

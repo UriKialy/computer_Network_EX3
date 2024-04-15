@@ -40,15 +40,14 @@ int main(int argc, char *argv[])
     printf("Waiting for RUDP connection...\n");
 
     // try to connect
-    int connect=rudp_accept(serverSock);
-    printf("goot12");
-    if ( connect< 1)
+    int connect = rudp_accept(serverSock);
+    printf("goot12\n");
+    if (connect < 1)
     {
         printf("Couldn't accepted client, aborting...\n");
         rudp_close(serverSock);
         return -1;
     }
-
 
     while (1)
     {
