@@ -272,8 +272,9 @@ int rudp_accept(RUDP_Socket *serverSock)
     // Set timeout for receiving connection request
     timeout.tv_sec = 0;
     timeout.tv_usec = TIMEOUT_MICROSECS;
-
-    while (1)
+    int i=0;
+    printf("enter to the while and beyond meat");
+    while ( i<100) //200 tries 
     {
         FD_ZERO(&readfds);
         FD_SET(serverSock->socket_fd, &readfds);
@@ -288,8 +289,10 @@ int rudp_accept(RUDP_Socket *serverSock)
         else if (select_ret == 0)
         { // Timeout occurred
             printf("Timeout waiting for connection request\n");
+            i++;
             continue;
         }
+        printf("bruuh\n");
 
         // Data available on the socket (serverSock->sockfd)
         int bytes_recvd = recvfrom(serverSock->socket_fd, recvPacket, BUFFER_SIZE, 0, (struct sockaddr *)&their_addr, &addr_size);
@@ -300,6 +303,7 @@ int rudp_accept(RUDP_Socket *serverSock)
             if (errno == EWOULDBLOCK)
             { // Timeout occurred
                 printf("Timeout waiting for connection request\n");
+                i++;
                 continue;
             }
             else
@@ -324,6 +328,7 @@ int rudp_accept(RUDP_Socket *serverSock)
         {
             printf("Unexpected packet received during connection setup, ignoring\n");
         }
+        i++;
     }
 
     // Send a SYN-ACK response to the sender
