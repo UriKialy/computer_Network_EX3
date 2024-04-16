@@ -16,32 +16,21 @@
 #define ALGO_ARG 4
 #define MUL 1000
 #define DEV 1024
-#define BUFFER_SIZE 2097152
 #define IP "127.0.0.1"
 
 int main(int argc, char *argv[])
-{
-    // if (argc != 3)
-    // {
-    //     printf("Illegal command!\n");
-    //     return -1;
-    // }
-    // printf("Starting Receiver.\n");
-
+{    
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
     char buffer[BUFFER_SIZE] = {0};
     List *dataList = List_alloc();
-
-    RUDP_Socket *serverSock = rudp_socket(true, atoi(argv[PORT_ARG]));
-
+    RUDP_Socket *serverSock = rudp_socket(true, (short)atoi(argv[PORT_ARG]));
     printf("Starting Receiver.\n");
     printf("Waiting for RUDP connection...\n");
 
     // try to connect
     int connect = rudp_accept(serverSock);
-    printf("goot12\n");
     if (connect < 1)
     {
         printf("Couldn't accepted client, aborting...\n");

@@ -15,7 +15,7 @@
 #define TIMES_TO_SEND 100
 #define BITS_TO_BYTES 8
 
-#define TIMEOUT_MICROSECS 1000000
+#define TIMEOUT_MICROSECS 700000
 #define BUFFER_SIZE 2048
 #define SERVER_IP_ADDRESS "127.0.0.1"
 
@@ -32,7 +32,7 @@ typedef struct _RUDP_Header
 typedef struct _RUDP_Packet
 {
     // Header for RUDP
-    RUDP_Header* header;
+    RUDP_Header header;
 
     // Message to deliver
     char mes[BUFFER_SIZE];
