@@ -11,34 +11,23 @@ RUDP_Packet *create_Packet(void)
         perror("no memory");
         exit(EXIT_FAILURE);
     }
-    // packet->header = (RUDP_Header )calloc(1, sizeof(RUDP_Header));
-    // if (packet->header == NULL)
-    // {
-    //     perror("no memory");
-    //     free(packet);
-    //     exit(EXIT_FAILURE);
-    // }
     return packet;
 }
 void set_Packet(RUDP_Packet *packet, char ack, char fin, char syn, short seq, char *mes)
 {
-    // memset(packet.header->ack, ack, sizeof(char));
-    // memset(packet.header->fin, fin, sizeof(char));
-    // memset(packet.header->syn, syn, sizeof(char));
-    // memset(packet.header->seq, seq, sizeof(short));
+
     packet->header.fin = fin;
     packet->header.syn = syn;
     packet->header.seq = seq;
     packet->header.ack = ack;
     if (strchr(mes, '\0') == NULL)
     { // check if the messenge is ending with \0
-        perror("messenge too long wtf");
+        perror("messenge too long "); // because its not ending with \0 it is to long
         exit(EXIT_FAILURE);
     }
     strcpy(packet->mes, mes);
     packet->header.length = strlen(mes);
     packet->header.checksum = calculate_checksum((void *)packet, packet->header.length), sizeof(short);
-    // memset(packet.header->checksum, calculate_checksum((void *)packet, packet.header->length), sizeof(short));
 }
 
 int send_fin(RUDP_Socket *sockfd)
@@ -46,13 +35,13 @@ int send_fin(RUDP_Socket *sockfd)
     RUDP_Packet *pack = create_Packet();
     set_Packet(pack, 0, 1, 0, 0, "FIN");
     int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (const struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
-    if (bytes_send == 0) // nice
+    if (bytes_send == 0) // Connection closed
     {
         printf("connection closed.\n");
         free(pack);
         return -1;
     }
-    else if (bytes_send < 0)
+    else if (bytes_send < 0) /// error
     {
         perror("send(2)");
         free(pack);
@@ -66,16 +55,16 @@ int send_ack(RUDP_Socket *sockfd, int seq)
 {
     RUDP_Packet *pack = create_Packet();
     set_Packet(pack, 1, 0, 0, seq + 1, "ACK");
-    int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, 0, (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+    int bytes_send = sendto(sockfd->socket_fd, (void *)pack, BUFFER_SIZE, SO_REUSEADDR, (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
     if (bytes_send == 0)
     {
-        printf("connection closed.\n");
+        printf("connection closed.\n");// Connection closed
         free(pack);
         return -1;
     }
     else if (bytes_send < 0)
     {
-        perror("send(2)");
+        perror("send(2)"); // error
         free(pack);
         return 0;
     }
@@ -91,7 +80,6 @@ void free_packet(RUDP_Packet *p)
     }
     free(p);
 }
-
 unsigned short int calculate_checksum(void *data, unsigned int bytes)
 {
     unsigned short int *data_pointer = (unsigned short int *)data;
@@ -110,6 +98,7 @@ unsigned short int calculate_checksum(void *data, unsigned int bytes)
         total_sum = (total_sum & 0xFFFF) + (total_sum >> 16);
     return (~((unsigned short int)total_sum));
 }
+/////// end of helper function/////
 
 // Allocates a new structure for the RUDP socket (contains basic information about the socket itself). Also creates a UDP socket as a baseline for the RUDP.
 // isServer means that this socket acts like a server. If set to server socket, it also binds the socket to a specific port.
@@ -151,8 +140,8 @@ RUDP_Socket *rudp_socket(bool isServer, unsigned short int listen_port)
 
 int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int dest_port)
 {
-    RUDP_Packet *sendPack = create_Packet(); 
-    RUDP_Packet *recvPack = create_Packet(); 
+    RUDP_Packet *sendPack = create_Packet();
+    RUDP_Packet *recvPack = create_Packet();
 
     // Set timeout before entering the loop
     struct timeval timeout;
@@ -187,10 +176,10 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
         free_packet(sendPack);
         return -4;
     }
-    int flag1=0, i=69;
-    set_Packet(sendPack, 0, 0, 1, 0, "SYN"); 
-    
-    for ( i = 0; i < TIMES_TO_SEND; i++)
+    int flag1 = 0, i = 69;
+    set_Packet(sendPack, 0, 0, 1, 0, "SYN");
+
+    for (i = 0; i < TIMES_TO_SEND; i++)
     {
         int ack = sendto(sockfd->socket_fd, sendPack, sizeof(RUDP_Packet), 0,
                          (struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
@@ -205,43 +194,46 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
             free_packet(sendPack);
             return -5;
         }
-        int j=0;
+        int j = 0;
         printf("entering the while loop\n");
-        while(j<100){ 
-        int bytes_recv = recv(sockfd->socket_fd, recvPack, sizeof(RUDP_Packet), 0);
-        if (bytes_recv == 0)
+        while (j < 100)
         {
-            printf("Receive timed out.\n");
-            j++;
-            continue; // Retry on timeout
+            int bytes_recv = recv(sockfd->socket_fd, recvPack, sizeof(RUDP_Packet), 0);
+            if (bytes_recv == 0)
+            {
+                printf("Receive timed out.\n");
+                j++;
+                continue; // Retry on timeout
+            }
+            else if (bytes_recv == -1)
+            {
+                perror("recvfrom");
+                free_packet(recvPack);
+                return -6;
+            }
+
+            if (!(recvPack->header.syn && recvPack->header.ack))
+            {
+                printf("Didn't receive SYN-ACK.\n");
+                j++;
+                continue; // Retry if not SYN-ACK
+            }
+
+            // Successful handshake, break out of the loop
+            flag1 = 1;
+            break;
         }
-        else if (bytes_recv == -1)
+        if (j == 100)
         {
-            perror("recvfrom");
+            printf("Connection request not received\n");
             free_packet(recvPack);
-            return -6;
+            free_packet(sendPack);
+            return 0;
         }
-
-        if (!(recvPack->header.syn && recvPack->header.ack))
+        if (flag1 = 1)
         {
-            printf("Didn't receive SYN-ACK.\n");
-            j++;
-            continue; // Retry if not SYN-ACK
+            break;
         }
-
-        // Successful handshake, break out of the loop
-        flag1=1;
-        break;
-    }
-    if(j==100){
-        printf("Connection request not received\n");
-        free_packet(recvPack);
-        free_packet(sendPack);
-        return 0;
-    }
-    if(flag1=1){
-        break;
-    }
     }
     if (i == TIMES_TO_SEND) // Maximum attempts reached
     {
@@ -281,7 +273,7 @@ int rudp_accept(RUDP_Socket *serverSock)
             if (errno == EWOULDBLOCK)
             { // Timeout occurred
                 printf("RECV JUMPED - Timeout waiting for connection request\n");
-                
+
                 continue;
             }
             else
@@ -314,8 +306,9 @@ int rudp_accept(RUDP_Socket *serverSock)
         return -3;
     }
 
+    serverSock->isConnected = true;
     printf("Connection established with client.\n");
-    return 1; // Return the received SYN packet 
+    return 1; // Return the received SYN packet
 }
 
 // Receives data from the other side and put it into the buffer. Returns the number of received bytes on success, 0 if got FIN packet (disconnect), and -1 on error.
@@ -362,7 +355,7 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size)
 
     strncpy(buffer, receivePacket->mes, buffer_size);
 
-    send_ack(sockfd, receivePacket->header.seq);
+    send_ack(sockfd, receivePacket->header.seq + 1);
     free_packet(receivePacket);
 
     return bytes_rec;
@@ -378,27 +371,27 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
     timeout.tv_sec = 0;
     timeout.tv_usec = 500;
 
-    if (sockfd->isConnected)
+    if (!sockfd->isConnected)
     {
-        perror("Socket already connected\n");
+        printf("Socket isn't connected.\n");
         close(sockfd->socket_fd);
-        free_packet(sockfd);
+        free_packet(pack);
         return 0;
     }
-    else if (!sockfd->isServer)
+
+    else if (sockfd->isServer)
     {
-        perror("Can't accept a client\n");
-        close(sockfd->socket_fd); // close the socket and spark one up
-        free_packet(sockfd);
-
+        printf("Server can't send data.\n");
+        close(sockfd->socket_fd); // Just close the socket
+        free_packet(pack);
         return 0;
     }
 
-    set_Packet(pack, 0, 0, 1, seq, 0);
+    set_Packet(pack, 0, 0, 0, seq, buffer);
 
     for (int i = 0; i < TIMES_TO_SEND; i++)
     {
-        bytes_sent = sendto(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
+        bytes_sent = sendto(sockfd->socket_fd, pack, BUFFER_SIZE, SO_REUSEADDR, (struct sockaddr_in *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
         if (bytes_sent == 0)
         {
@@ -427,19 +420,28 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
         }
 
         int ack = recvfrom(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, (socklen_t *)sizeof(sockfd->dest_addr));
+        if (ack > 0)
+        {
+            // Check if received packet is an ACK for the current sequence number
+            if (pack->header.ack)
+            {
+                // Received ACK, break out of resend loop
+                break;
+            }
+        }
+
         if (ack < 0)
         {
             if (ack == 0)
             {
                 printf("Receive failed.\n");
-                free_packet(pack);
-                return 0;
             }
-            else if (ack == -1)
+            else
             {
-                free_packet(pack);
-                return -1;
+                perror("recvfrom");
             }
+            free_packet(pack);
+            return -1;
         }
     }
 
@@ -459,7 +461,7 @@ int rudp_disconnect(RUDP_Socket *sockfd)
         return 0;
     }
     int sent = send_fin(sockfd);
-    int receive_bytes = recvfrom(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, (socklen_t*)sizeof(sockfd->dest_addr));
+    int receive_bytes = recvfrom(sockfd->socket_fd, pack, BUFFER_SIZE, 0, (struct sockaddr_in *)&sockfd->dest_addr, (socklen_t *)sizeof(sockfd->dest_addr));
 
     if (sent && pack->header.ack)
     {
@@ -472,8 +474,12 @@ int rudp_disconnect(RUDP_Socket *sockfd)
 // This function releases all the memory allocation and resources of the socket.
 int rudp_close(RUDP_Socket *sockfd)
 {
+    if (sockfd == NULL)
+    {
+        return -1; // Or handle the error case differently
+    }
     close(sockfd->socket_fd);
-    free(sockfd);
+    return 0;
 }
 
 void print_syn_packet(RUDP_Packet *packet)

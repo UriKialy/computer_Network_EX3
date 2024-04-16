@@ -67,13 +67,13 @@ int main(int argc, char *argv[])
             if (cur_sent == -1)
             {
 
-                perror("send(2)");
+                printf("send failed.\n");
                 rudp_close(sock);
                 return 1;
             }
             else if (cur_sent == 0)
             {
-                printf("peer has closed the TCP connection prior to send().\n");
+                printf("peer has closed the RUDP connection prior to send().\n");
                 rudp_close(sock);
                 return 1;
             }
@@ -85,6 +85,8 @@ int main(int argc, char *argv[])
             {
                 bytesSent += cur_sent;
             }
+
+            seq += cur_sent + 1;
         }
         printf("File was successfully sent.\n");
 

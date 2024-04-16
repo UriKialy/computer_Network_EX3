@@ -41,8 +41,7 @@ typedef struct _RUDP_Packet
 
 // [[ RUDP HRADER ] [ PAYLOAD ]]
 
-RUDP_Packet *create_Packet(void);
-void set_Packet(RUDP_Packet* packet, char ack, char fin, char syn, short seq, char mes[BUFFER_SIZE]);
+
 
 // A struct that represents RUDP Socket
 typedef struct _rudp_socket
@@ -52,6 +51,12 @@ typedef struct _rudp_socket
     bool isConnected;             // True if there is an active connection, false otherwise.
     struct sockaddr_in dest_addr; // Destination address. Client fills it when it connects via rudp_connect(), server fills it when it accepts a connection via rudp_accept().
 } RUDP_Socket;
+
+// A struct that represents a packet
+RUDP_Packet *create_Packet(void);
+
+// A function that sets the values of the packet
+void set_Packet(RUDP_Packet* packet, char ack, char fin, char syn, short seq, char mes[BUFFER_SIZE]);
 
 // Allocates a new structure for the RUDP socket (contains basic information about the socket itself). Also creates a UDP socket as a baseline for the RUDP.
 // isServer means that this socket acts like a server. If set to server socket, it also binds the socket to a specific port.
@@ -76,8 +81,27 @@ int rudp_disconnect(RUDP_Socket *sockfd);
 // This function releases all the memory allocation and resources of the socket.
 int rudp_close(RUDP_Socket *sockfd);
 
+//this function calculates the checksum
+unsigned short int calculate_checksum(void *data, unsigned int bytes);
+
+// our functions//
+
 // This function Sends fyn 
 int send_fin(RUDP_Socket *sockfd);
+
 // This function Sends ack
 int send_ack(RUDP_Socket *sockfd, int seq);
+
+// This function calculates the checksum
 unsigned short int calculate_checksum(void *data, unsigned int bytes);
+
+//this function creates a packet
+RUDP_Packet *create_Packet(void);
+
+//this function sets the packet values
+void set_Packet(RUDP_Packet *packet, char ack, char fin, char syn, short seq, char *mes);
+
+//this function free the packet
+void free_packet(RUDP_Packet *p);
+
+

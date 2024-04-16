@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)
             {
-                perror("Receive was unsuccessful");
+                printf("Receive was unsuccessful\n");
                 rudp_close(serverSock);
                 return 1;
             }
