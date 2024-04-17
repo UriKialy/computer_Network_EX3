@@ -17,13 +17,14 @@
 #define MUL 1000
 #define DEV 1024
 #define IP "127.0.0.1"
+#define DATA_SIZE 2097152
 
 int main(int argc, char *argv[])
 {    
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
-    char buffer[BUFFER_SIZE] = {0};
+    char buffer[DATA_SIZE] = {0};
     List *dataList = List_alloc();
     RUDP_Socket *serverSock = rudp_socket(true, (short)atoi(argv[PORT_ARG]));
     printf("Starting Receiver.\n");
@@ -47,10 +48,10 @@ int main(int argc, char *argv[])
         gettimeofday(&start, NULL);
 
         // Receive a message from the client and store it in the buffer.
-        while (bytes_received < BUFFER_SIZE)
+        while (bytes_received < DATA_SIZE)
         {
-            int currBytes = rudp_recv(serverSock, buffer, BUFFER_SIZE);
-
+            int currBytes = rudp_recv(serverSock, buffer + bytes_received, DATA_SIZE - bytes_received);
+            printf("Received %d bytes\n", currBytes);
             bytes_received += currBytes;
 
             // If the message receiving failed, print an error message and return 1.
@@ -69,13 +70,13 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (buffer[BUFFER_SIZE - 1] != '\0')
-            buffer[BUFFER_SIZE - 1] = '\0';
+        if (buffer[DATA_SIZE - 1] != '\0')
+            buffer[DATA_SIZE - 1] = '\0';
 
         printf("File transfer completed.\n");
         gettimeofday(&end, NULL);
         total_t = ((end.tv_sec - start.tv_sec) * 1000 + ((double)(end.tv_usec - start.tv_usec) / 1000));
-        double bandwith = ((double)(BUFFER_SIZE / 1024) / 1024) / (total_t / 1000);
+        double bandwith = ((double)(DATA_SIZE / 1024) / 1024) / (total_t / 1000);
         List_insertLast(dataList, total_t, bandwith);
         printf("Waiting for Sender response...\n");
         rudp_recv(serverSock, buffer, sizeof(buffer));
