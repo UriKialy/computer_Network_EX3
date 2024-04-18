@@ -37,16 +37,16 @@ char *util_generate_random_data(unsigned int size)
 
 int main(int argc, char *argv[])
 {
-
+    int seq = 0;
     int bytesSent = 0;
     char ans[PORT_ARG] = "yes";
-    RUDP_Socket *sock = rudp_socket(false, argv[PORT_ARG]);
-    char *message = util_generate_random_data(FILE_SIZE);
+    RUDP_Socket *sock = rudp_socket(false, argv[PORT_ARG]);//create a socket
+    char *message = util_generate_random_data(FILE_SIZE);//generate random data
 
     printf("Starting Sender.\n");
 
     printf("Connecting to Reciever...\n");
-    int connect = rudp_connect(sock, argv[IP_ARG], (short)atoi(argv[PORT_ARG]));
+    int connect = rudp_connect(sock, argv[IP_ARG], (short)atoi(argv[PORT_ARG]));//connect to reciever
     if (connect < 0)
     {
         printf("Failed to connect.\n");
@@ -56,17 +56,17 @@ int main(int argc, char *argv[])
 
     while (1)
     {
+        seq = 0;
         bytesSent = 0;
 
         printf("Reciever connected, beginning to send file...\n");
 
-        while (bytesSent < FILE_SIZE)
+        while (bytesSent < FILE_SIZE)//as long as the file is not fully sent
         {
-            int seq = 0;
-            int cur_sent = rudp_send(sock, message + bytesSent, FILE_SIZE - bytesSent, 0);
+            
+            int cur_sent = rudp_send(sock, message + bytesSent, FILE_SIZE - bytesSent, seq);//send the each chunk of the file
             if (cur_sent == -1)
             {
-
                 printf("send failed.\n");
                 rudp_close(sock);
                 return 1;
@@ -77,19 +77,18 @@ int main(int argc, char *argv[])
                 rudp_close(sock);
                 return 1;
             }
-            else if (cur_sent == -2)
+            else if (cur_sent == -2) //if the file is not fully sent
             {
                 continue;
             }
             else
             {
-                bytesSent += cur_sent;
+                bytesSent += (cur_sent - seq); //increment the bytes sent
             }
 
-            seq += cur_sent + 1;
+            seq = cur_sent;
         }
         printf("File was successfully sent.\n");
-
         printf("Do you want to resend the file? [yes/no]: ");
         scanf("%s", ans);
         if (ans[0] != 'y')
@@ -97,7 +96,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
+    //free the memory and close the socket
     free(message);
     rudp_disconnect(sock);
     rudp_close(sock);
@@ -107,11 +106,3 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-// Create socket
-// Set up receiver address
-// setting the SERVER_IP address
-// Perform handshake
-// Send data
-// finish sending, and receive the last ack, close the rudp connection
-// packet->flags = FLAG_FIN;
-// to print stats

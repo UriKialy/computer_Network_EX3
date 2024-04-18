@@ -13,20 +13,19 @@
 
 #define MAX_CLIENTS 1
 #define PORT_ARG 2
-#define ALGO_ARG 4
 #define MUL 1000
 #define DEV 1024
 #define IP "127.0.0.1"
 #define DATA_SIZE 2097152
 
 int main(int argc, char *argv[])
-{    
+{
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
-    char buffer[DATA_SIZE] = {0};
-    List *dataList = List_alloc();
-    RUDP_Socket *serverSock = rudp_socket(true, (short)atoi(argv[PORT_ARG]));
+    char buffer[DATA_SIZE] = {0}; // Buffer to store the message from the client.
+    List *dataList = List_alloc();// List to store the data.
+    RUDP_Socket *serverSock = rudp_socket(true, (short)atoi(argv[PORT_ARG]));// Create a new RUDP socket.
     printf("Starting Receiver.\n");
     printf("Waiting for RUDP connection...\n");
 
@@ -39,10 +38,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    printf("Sender connected, beginning to receive file...\n");
+
     while (1)
     {
 
-        printf("Sender connected, beginning to receive file...\n");
+        bytes_received = 0;
 
         gettimeofday(&start, NULL);
 
@@ -50,8 +51,7 @@ int main(int argc, char *argv[])
         {
             // Receive a message from the client and store it in the buffer.
             int currBytes = rudp_recv(serverSock, buffer + bytes_received, DATA_SIZE - bytes_received);
-            printf("Received %d bytes\n", currBytes);
-            bytes_received += currBytes;
+            bytes_received += currBytes;// Increment the number of bytes received.
 
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)
@@ -69,17 +69,20 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (buffer[DATA_SIZE - 1] != '\0')
+        if (buffer[DATA_SIZE - 1] != '\0')// If the last character of the buffer is not a null character, set it to a null character.
             buffer[DATA_SIZE - 1] = '\0';
 
         printf("File transfer completed.\n");
+
         gettimeofday(&end, NULL);
-        total_t = ((end.tv_sec - start.tv_sec) * 1000 + ((double)(end.tv_usec - start.tv_usec) / 1000));
-        double bandwith = ((double)(DATA_SIZE / 1024) / 1024) / (total_t / 1000);
-        List_insertLast(dataList, total_t, bandwith);
+        total_t = ((end.tv_sec - start.tv_sec) * MUL + ((double)(end.tv_usec - start.tv_usec) / MUL));// Calculate the total time taken to receive the file.
+        double bandwith = ((double)(DATA_SIZE / DEV) / DEV) / (total_t / MUL);// Calculate the bandwith.
+        List_insertLast(dataList, total_t, bandwith);// Insert the total time and bandwith into the list.
+
         printf("Waiting for Sender response...\n");
-        rudp_recv(serverSock, buffer, sizeof(buffer));
-        if (strcmp(buffer, "FIN") == 0)
+
+        int fin = rudp_recv(serverSock, buffer, sizeof(buffer));// Receive a message from the client and  check if its an exit message.
+        if (fin == -2)
         {
 
             printf("Sender sent exit message.\n");
@@ -87,7 +90,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
+    // Print the data list and free the list.
     List_print(dataList);
     List_free(dataList);
 
