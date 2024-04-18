@@ -43,13 +43,12 @@ int main(int argc, char *argv[])
     {
 
         printf("Sender connected, beginning to receive file...\n");
-        // Create a buffer to store the received message.
 
         gettimeofday(&start, NULL);
 
-        // Receive a message from the client and store it in the buffer.
         while (bytes_received < DATA_SIZE)
         {
+            // Receive a message from the client and store it in the buffer.
             int currBytes = rudp_recv(serverSock, buffer + bytes_received, DATA_SIZE - bytes_received);
             printf("Received %d bytes\n", currBytes);
             bytes_received += currBytes;
