@@ -1,20 +1,9 @@
 #include "List.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 
-// Node & List Data Structures
-typedef struct _node
-{
-	double _speed;
-	double _bandwith;
-	struct _node *_next;
-} Node;
 
-struct _List
-{
-	Node *_head;
-	size_t _size;
-};
 
 //------------------------------------------------
 // Node implementation
@@ -26,6 +15,7 @@ Node *Node_alloc(double speed, double bandwith,
 	Node *p = (Node *)malloc(sizeof(Node));
 	p->_speed = speed;
 	p->_bandwith = bandwith;
+	p->_next = NULL;
 	return p;
 }
 
@@ -33,7 +23,6 @@ void Node_free(Node *node)
 {
 	free(node);
 }
-//------------------------------------------------
 
 //------------------------------------------------
 // List implementation
@@ -42,6 +31,12 @@ void Node_free(Node *node)
 List *List_alloc()
 {
 	List *p = (List *)malloc(sizeof(List));
+	if(p == NULL)
+	{
+		printf("ERROR ALLOCATING MEMEORY, ABORTING!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	p->_head = NULL;
 	p->_size = 0;
 	return p;
@@ -53,7 +48,7 @@ void List_free(List *list)
 		return;
 	Node *p1 = list->_head;
 	Node *p2;
-	while (p1)
+	while (p1 != NULL)
 	{
 		p2 = p1;
 		p1 = p1->_next;
@@ -62,9 +57,6 @@ void List_free(List *list)
 	free(list);
 }
 
-/*
- * Inserts an element in the end of the StrList.
- */
 void List_insertLast(List *list, const double speed, const double bandwith)
 {
 	if (list->_head == NULL)
@@ -96,7 +88,7 @@ void List_print(const List *list)
 	printf("----------------------------------\n");
 	printf("-          * Statistics *        -\n");
 
-	while (p->_next)
+	while (p != NULL)
 	{
 		printf("- Run #%d Data: Time=%.2fms; Speed=%.2fMB/s\n", i, p->_speed, p->_bandwith);
 		i++;
@@ -114,7 +106,7 @@ double calcAvgTime(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p->_next)
+	while(p != NULL)
 	{
 		sum += p->_speed;
 		p = p->_next;
@@ -128,7 +120,7 @@ double calcAvgBandwith(const List *list)
 	double sum = 0;
 	Node* p = list->_head;
 
-	while(p->_next)
+	while(p != NULL)
 	{
 		sum += p->_bandwith;
 		p = p->_next;

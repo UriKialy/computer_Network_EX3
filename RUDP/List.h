@@ -1,5 +1,3 @@
-#pragma once
-
 #include <stdlib.h>
 
 /********************************************************************************
@@ -16,8 +14,20 @@
 /*
  * List represents a List data structure.
  */
-struct _List;
-typedef struct _List List;
+
+// Node & List Data Structures
+typedef struct _node
+{
+	double _speed;
+	double _bandwith;
+	struct _node *_next;
+} Node;
+
+typedef struct _List
+{
+	Node *_head;
+	size_t _size;
+}List;
 
 /*
  * Allocates a new empty List.
@@ -32,20 +42,9 @@ List* List_alloc();
 void List_free(List* list);
 
 /*
- * Returns the number of elements in the list.
- */
-size_t List_size(const List* list);
-
-/*
  * Inserts an element in the begining of the list.
  */
-void List_insertFirst(List* list,
-					  double data);
-
-/*
- * Returns the list first data.
- */
-double List_firstData(const List* list);
+void List_insertLast(List *list, const double speed, const double bandwith);
 
 /*
  * Prints the list to the standard output.
@@ -53,17 +52,12 @@ double List_firstData(const List* list);
 void List_print(const List* list);
 
 /*
- * Checks if two lists have the same elements
- * returns 0 if not and any other number if yes
+ * Claculates the Average runtime of the list
  */
-int List_equal(const List* list1, const List* list2);
+double calcAvgTime(const List *list);
 
 /*
- * Clones the given list. 
- * It's the user responsibility to free it with List_free.
+ * Claculates the Average bandwith of the list
  */
-List* List_clone(const List* list);
-
-double calcAvgTime(const List *list);
 double calcAvgBandwith(const List *list);
 

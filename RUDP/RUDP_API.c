@@ -273,7 +273,6 @@ int rudp_accept(RUDP_Socket *serverSock)
         {
             if (errno == EWOULDBLOCK)
             { // Timeout occurred
-                printf("RECV JUMPED - Timeout waiting for connection request\n");
 
                 continue;
             }
@@ -374,8 +373,6 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {
         return -2;
     }
 
-    printf("seq recv- %d\n", receivePacket->header.seq);
-
     strncpy(buffer, receivePacket->mes, buffer_size);
 
     send_ack(sockfd, receivePacket->header.seq + bytes_rec);
@@ -392,6 +389,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
     timeout.tv_sec = 0;
     timeout.tv_usec = 500;
     socklen_t dest_addr_len = sizeof(struct sockaddr);
+    unsigned int seqNum = 0;
 
     if (!sockfd->isConnected) {
         printf("Socket isn't connected.\n");
@@ -437,7 +435,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
         }
 
         int ack = recvfrom(sockfd->socket_fd, pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, &dest_addr_len);
-        printf("seq - %d\n", pack->header.seq);
+        seqNum = pack->header.seq;
         if (ack > 0) {
             // Check if received packet is an ACK for the current sequence number
             if (pack->header.ack) {
@@ -455,7 +453,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
         }
     }
     free_packet(pack);
-    return pack->header.seq;
+    return seqNum;
 }
 
 
