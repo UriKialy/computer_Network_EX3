@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
         {
             // Receive a message from the client and store it in the buffer.
             int currBytes = rudp_recv(serverSock, buffer + bytes_received, DATA_SIZE - bytes_received);
-            printf("curr recv - %d\n", currBytes);
 
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)

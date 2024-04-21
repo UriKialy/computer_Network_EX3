@@ -196,7 +196,6 @@ int rudp_connect(RUDP_Socket *sockfd, const char *dest_ip, unsigned short int de
             return -5;
         }
         int j = 0;
-        printf("entering the while loop\n");
         while (j < 100)
         {
             int bytes_recv = recv(sockfd->socket_fd, recvPack, sizeof(RUDP_Packet), 0);
@@ -337,7 +336,6 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {
         }
         bytes_rec = recvfrom(sockfd->socket_fd, receivePacket, sizeof(RUDP_Packet), 0,
                                  (struct sockaddr *)&sockfd->dest_addr, &dest_addr_len);
-        printf("seq bef recv- %d\n", receivePacket->header.seq);
         if (bytes_rec < 0) {
             // Handle recvfrom error (log details using errno)
             printf("recvfrom error: %s.\n", strerror(errno));
@@ -377,14 +375,12 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {
     strncpy(buffer, receivePacket->mes, buffer_size);
 
     send_ack(sockfd, receivePacket->header.seq + bytes_rec);
-    printf("seq bef recv- %d\n", receivePacket->header.seq + bytes_rec);
     free_packet(receivePacket);
 
     return receivePacket->header.seq + bytes_rec;
 }
 
 int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsigned int seq) {
-    printf("seq bef - %d\n", seq);
     int bytes_sent = 0;
     int timeout_oc = 0;
     RUDP_Packet *pack = create_Packet();
@@ -440,7 +436,6 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
 
         int ack = recvfrom(sockfd->socket_fd, pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, &dest_addr_len);
         seqNum = pack->header.seq;
-        printf("seq aft - %d\n", seqNum);
         if (ack > 0) {
             // Check if received packet is an ACK for the current sequence number
             if (pack->header.ack) {
