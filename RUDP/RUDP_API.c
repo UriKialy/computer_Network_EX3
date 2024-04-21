@@ -337,11 +337,12 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {
         }
         bytes_rec = recvfrom(sockfd->socket_fd, receivePacket, sizeof(RUDP_Packet), 0,
                                  (struct sockaddr *)&sockfd->dest_addr, &dest_addr_len);
+        printf("seq bef recv- %d\n", receivePacket->header.seq);
         if (bytes_rec < 0) {
             // Handle recvfrom error (log details using errno)
-            printf("recvfrom error: %s\n", strerror(errno));
+            printf("recvfrom error: %s.\n", strerror(errno));
             retries++;
-            if (retries >= 100) {  // Define a reasonable maximum
+            if (retries >= TIMES_TO_SEND) {  // Define a reasonable maximum
                 free_packet(receivePacket);
                 return -1;
             }
@@ -376,12 +377,14 @@ int rudp_recv(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size) {
     strncpy(buffer, receivePacket->mes, buffer_size);
 
     send_ack(sockfd, receivePacket->header.seq + bytes_rec);
+    printf("seq bef recv- %d\n", receivePacket->header.seq + bytes_rec);
     free_packet(receivePacket);
 
-    return bytes_rec;
+    return receivePacket->header.seq + bytes_rec;
 }
 
 int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsigned int seq) {
+    printf("seq bef - %d\n", seq);
     int bytes_sent = 0;
     int timeout_oc = 0;
     RUDP_Packet *pack = create_Packet();
@@ -390,6 +393,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
     timeout.tv_usec = 500;
     socklen_t dest_addr_len = sizeof(struct sockaddr);
     unsigned int seqNum = 0;
+    int i = 0;
 
     if (!sockfd->isConnected) {
         printf("Socket isn't connected.\n");
@@ -407,7 +411,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
 
     set_Packet(pack, 0, 0, 0, seq, buffer);
 
-    for (int i = 0; i < TIMES_TO_SEND; i++) {
+    for (i = 0; i < TIMES_TO_SEND; i++) {
         bytes_sent = sendto(sockfd->socket_fd, pack, BUFFER_SIZE, SO_REUSEADDR, (const struct sockaddr *)&sockfd->dest_addr, sizeof(sockfd->dest_addr));
 
         if (bytes_sent == 0) {
@@ -436,6 +440,7 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
 
         int ack = recvfrom(sockfd->socket_fd, pack, sizeof(RUDP_Packet), 0, (struct sockaddr *)&sockfd->dest_addr, &dest_addr_len);
         seqNum = pack->header.seq;
+        printf("seq aft - %d\n", seqNum);
         if (ack > 0) {
             // Check if received packet is an ACK for the current sequence number
             if (pack->header.ack) {
@@ -445,12 +450,17 @@ int rudp_send(RUDP_Socket *sockfd, void *buffer, unsigned int buffer_size, unsig
         } else if (ack < 0) {
             if (ack == 0) {
                 printf("Receive failed.\n");
+                free_packet(pack);
+                return -1;
             } else {
-                perror("recvfrom");
+                continue;
             }
-            free_packet(pack);
-            return -1;
+
         }
+    }
+    if (i == TIMES_TO_SEND)
+    {
+        return -1;
     }
     free_packet(pack);
     return seqNum;
@@ -488,9 +498,4 @@ int rudp_close(RUDP_Socket *sockfd)
     }
     close(sockfd->socket_fd);
     return 0;
-}
-
-void print_syn_packet(RUDP_Packet *packet)
-{
-    printf("SYN: %d\n", packet->header.syn);
 }

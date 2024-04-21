@@ -62,7 +62,6 @@ int main(int argc, char *argv[])
 
     // Free the compiled regex
     regfree(&regex);
-
     double total_t = 0;
     int bytes_received = 0;
     struct timeval start, end;
@@ -94,22 +93,24 @@ int main(int argc, char *argv[])
         {
             // Receive a message from the client and store it in the buffer.
             int currBytes = rudp_recv(serverSock, buffer + bytes_received, DATA_SIZE - bytes_received);
-            bytes_received += currBytes; // Increment the number of bytes received.
+            printf("curr recv - %d\n", currBytes);
 
             // If the message receiving failed, print an error message and return 1.
             if (currBytes < 0)
             {
-                printf("Receive was unsuccessful\n");
+                printf("Receive was unsuccessful.\n");
                 rudp_close(serverSock);
                 return 1;
             }
 
             else if (currBytes == 0)
             {
-                fprintf(stdout, "Client disconnected\n");
+                fprintf(stdout, "Client disconnected.\n");
                 rudp_close(serverSock);
                 break;
             }
+
+            bytes_received = currBytes; // Increment the number of bytes received.
         }
 
         if (buffer[DATA_SIZE - 1] != '\0') // If the last character of the buffer is not a null character, set it to a null character.
@@ -132,8 +133,9 @@ int main(int argc, char *argv[])
             rudp_close(serverSock);
             break;
         }
-        else
+        else if (strcmp(buffer, "CON"))
         {
+            printf("prob\n");
             continue;
         }
     }

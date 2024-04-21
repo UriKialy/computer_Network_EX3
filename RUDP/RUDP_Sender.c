@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
             }
             else
             {
+                printf("diff - %d\n", (cur_sent - seq));
                 bytesSent += (cur_sent - seq); // increment the bytes sent
             }
 
